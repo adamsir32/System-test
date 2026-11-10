@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "producer": {
+    "public_repository": "https://github.com/adamsir32/inline-asm",
+    "public_commit": "5a0f7898da265a6c92e6f73331a540c8fc8d38a9",
+    "package_build_commit": "2622761537c7dcd73a89da3482da1d65c2b9c9b5",
+    "equivalence": "Verified on original server: code, dependencies and CMake inputs identical; differences are delivery documentation only.",
+    "trees": {
+      "examples": "27d9b883c72338e1d89713f9316e2293a770030e",
+      "src": "b5056b999ea0464118538101dd6716c3df5778bc",
+      "include": "4a22d29badc7956d6dab442d67768aedfd06c6bd",
+      "encode": "19c3c25b394b2e50a8cdc03f76ce83e4af178f02",
+      "third_party": "d29db1cd17b5b3e6125be01434739ec7705007e7"
+    }
+  },
+  "nexus_reference": {
+    "public_commit": "61baacec3da198bd8d1841fcdd0992b650d42075",
+    "server_commit": "c738b84e1fb7a267c3042bad4144d1ae794b54f3",
+    "identical_tree": "782ec145bbea7384b3acd47afa42e264c7af76ca"
+  },
+  "key_export": {
+    "purpose": "PUBLIC TEST FIXTURE ONLY; never use for private data",
+    "compiler": "g++ Ubuntu 11.4.0-1ubuntu1~22.04.3",
+    "environment": "Original Producer acceptance SEAL build; explicit Blake2xb seeds as in producer source",
+    "format": "SEAL SecretKey, no compression",
+    "fingerprint": "BLAKE2b-256 over SecretKey NTT uint64 data, checked by offline executable",
+    "validation": "Must pass complete packaged Golden decryption before release"
+  },
+  "files": {
+    "packages/cpu-fixture.tar.gz": "954f01915289745deace1f01858bcd254afcc390f475279fc993cd641c33634d",
+    "packages/psi-receiver-layout.txt": "8cb3f4cd762a23ee7216a0ba1eef603cb716efe2a22b0dd800030b91a3367515",
+    "packages/psi-sets.json": "1be3023b101400adff729c388a80b5979f8729ca0f3e1dc34bca2bcb9a7930ee",
+    "packages/psi.tar.gz": "3e355165c2776995a70cd1ebc9517e6823a208806a12b9d32261d52d2e710848",
+    "packages/stage0.tar.gz": "f28622796c36d1b398a4a87c1bdff0b0f5a6b49e69485d48b32742dffd309dd2",
+    "packages/stage1.tar.gz": "c1176472457430692356d7c67a3a3935ec4c6bc0082776abec27f33ec5adf06c",
+    "packages/keys/fingerprints.h": "81180a702ddca8217491bc74db4f20ab5974bf9d34495cc0cd12f09093bbf09b",
+    "packages/keys/pir.secretkey.seal": "1d14b8ae58548b7d5d81eb24f88aa499e748f7713cf45c7fd47fa5dfef642c47",
+    "packages/keys/psi.secretkey.seal": "d0b78ca1946261042c600f52b1ffaf9bdea397cf9f933a3e51d46b5fcaff856c"
+  }
+}

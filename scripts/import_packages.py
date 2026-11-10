@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from import_package import import_package
 from pir_unified_layout import generate
+from verify_inputs import verify
 REV = '2622761537c7dcd73a89da3482da1d65c2b9c9b5'
 SPECS = {
     'psi': ('08_01_psi_single', 'psi_single', 'bfv_apsi_concentrated_application', 8192, 4, 'hpu_query'),
@@ -17,6 +18,7 @@ SPECS = {
     'stage1': ('08_03_pir_stage1', 'pir_stage1', 'bfv_sealpir_2d_small_stage1_concentrated_000', 4096, 3, 'stage1_concentrated_000'),
 }
 def main():
+    verify()
     build = ROOT / 'build'
     build.mkdir(exist_ok=True)
     meta, packages = {}, {}
@@ -56,6 +58,12 @@ def main():
              fixture / 'parameters.json', fixture / 'dynamic_inputs.tsv')
     (unified / 'pir_layout.h').write_text((unified / 'layout.h').read_text())
     (unified / 'pir_layout.c').write_text((unified / 'layout.c').read_text().replace('#include \"layout.h\"', '#include \"pir_layout.h\"'))
+    hpu = (unified / 'stage1/writable.u8.bin').read_bytes()
+    union = (unified / 'stage1/cpu_writable.u8.bin').read_bytes()
+    cpu = bytes(int(bool(c) and not bool(h)) for h, c in zip(hpu, union))
+    if len(cpu) != meta['stage1']['IMAGE_LINES'] or sum(cpu) != 96 * 64:
+        raise ValueError('CPU-only writable coverage mismatch')
+    (build / 'imported/stage1/cpu-inputs.u8.bin').write_bytes(cpu)
     sets = json.loads((ROOT / 'packages/psi-sets.json').read_text())
     locations = [tuple(map(int, line.split())) for line in (ROOT / 'packages/psi-receiver-layout.txt').read_text().splitlines()]
     if sorted(i for i, _ in locations) != sorted(sets['receiver']) or any(loc < 0 or loc >= 4096 for _, loc in locations):

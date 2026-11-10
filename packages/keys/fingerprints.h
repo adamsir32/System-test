@@ -1,0 +1,4 @@
+#pragma once
+#include <stdint.h>
+static const uint64_t PIR_KEY_FINGERPRINT[4] = {UINT64_C(0x4430d64b9486b6a),UINT64_C(0x27726cc08fbe55ad),UINT64_C(0x107cd878bd53a851),UINT64_C(0xb417a472c43f3844),};
+static const uint64_t PSI_KEY_FINGERPRINT[4] = {UINT64_C(0x478c14896eed255e),UINT64_C(0x55b05e91edd7e426),UINT64_C(0xf4beafd86f87c23e),UINT64_C(0x299b8053265991b1),};

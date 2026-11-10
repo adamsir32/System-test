@@ -1,31 +1,47 @@
-Server software checks; target: riscv64 Linux; real HPU: NOT RUN
-Cross build: PASS (GCC 14.2.0; make acceptance-build.log returned 0)
+PIR / PSI Small software validation - 2026-11-10
+Scope: this public extension only. Physical HPU: NOT RUN.
+Actual Linux CPU / hart -> HPU routing: NOT VERIFIED (no board or routing evidence available).
 
-System-test case inventory
-ST/IT 用例对齐检查通过: 115 条 (selfcheck=37, pending=7, producer=71)
+Environment
+  Development host: x86_64 Linux, GCC/G++ 11.4.0.
+  Board cross compiler: riscv64-unknown-linux-gnu-gcc 14.2.0.
+  External private Runtime: uploaded reference ZIP, matched config/runtime-contract.json.
+  Private Runtime source and ZIP are not included in this repository.
 
-Package import
-Imported PSI, PIR Stage0 and Stage1; program words and DMA layouts checked
+Commands (paths stand for the authorized local installations)
+  make SYSTEM_TEST=/path/to/authorized/System-test CROSS_COMPILE=/path/to/riscv64-unknown-linux-gnu-
+  make offline SEAL_SOURCE=/path/to/verified-producer/third_party/modified-SEAL
+  SYSTEM_TEST=/path/to/authorized/System-test python3 -m unittest discover -s tests -v
 
-ELF HPU instruction words
-st08_01_psi_small psi 2891 PASS
-st08_02_pir_small stage0 17740 PASS
-st08_02_pir_small stage1 26700 PASS
-group_08 psi 2891 PASS
-group_08 stage0 17740 PASS
-group_08 stage1 26700 PASS
+Results
+  Package SHA-256 lock, original package provenance and DMA/layout import: PASS.
+  Three RISC-V ELF targets: PASS.
+  Original Runtime no-V checker on all 15 project objects: PASS (logs/no-v.txt).
+  Exact ELF HPU instruction stream comparison, six entry checks: PASS.
+    st08_01_psi_small/psi: 2891
+    st08_02_pir_small/stage0: 17740
+    st08_02_pir_small/stage1: 26700
+    group_08/psi: 2891
+    group_08/stage0: 17740
+    group_08/stage1: 26700
+  Fresh independent host SEAL build, GSL/ZLIB/ZSTD/HEXL disabled: PASS.
+  Serialized test keys verified against packaged outputs in original and fresh host SEAL builds: PASS.
+  Host mock flow: six stage/lane DDR snapshots and four offline semantic checks: PASS.
+  Twelve regression tests, including negative/failure cases: PASS (3.439 seconds).
+  The FAIL JSON at the end of software-tests.txt is the expected simulated transport failure in test_11.
+  Default acceptance rejects host_mock results; explicit software mode reports hardware_verified=false.
 
-PIR client software output
-PIR_CLIENT_SOFTWARE_RC= 0
+Build ID
+  cd87850b0ea2013e2ffd0fb19aa7720157602c4a9aaca641c80254ccb6d202c2
 
-PSI client software output
-PSI_CLIENT_SOFTWARE_RC= 0
+Evidence
+  logs/board-build-receipt.json: ELF/input hashes, 15 object hashes, six instruction counts.
+  logs/offline-build-receipt.json: host verifier, key/source/configuration hashes.
+  logs/software-tests.txt: complete regression test output.
+  logs/software-flow.json: SOFTWARE_FLOW_PASS, hardware_verified=false.
 
-System-test no-V checker
-build/no-v/app_support.o: no V instructions
-build/no-v/pir_cpu_decompose.o: no V instructions
-build/no-v/pir_cpu_encode.o: no V instructions
-build/no-v/st08_01_psi_small.o: no V instructions
-build/no-v/st08_02_pir_small.o: no V instructions
-build/psi_client.o: no V instructions
-build/pir_client.o: no V instructions
+Limits
+  The mock writes Golden values; it does not execute HPU arithmetic.
+  No original unrelated ST or IT cases were implemented or accepted.
+  Physical HPU execution, actual hart routing, cache/IRQ/PSYNC behavior and fault recovery remain unverified.
+  Unconfirmed routing configuration blocks deployment. Recipient must supply actual hardware evidence and run board acceptance.

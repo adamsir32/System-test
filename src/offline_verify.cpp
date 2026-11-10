@@ -3,13 +3,13 @@
 #include <vector>
 #ifdef VERIFY_PSI
 #include "layout.h"
-extern "C" int psi_verify_intersection(const volatile uint32_t *);
+extern "C" int psi_verify_intersection(const volatile uint32_t *, const char *);
 #else
 #include "pir_layout.h"
-extern "C" int pir_verify_record(const volatile uint32_t *);
+extern "C" int pir_verify_record(const volatile uint32_t *, const char *);
 #endif
 int main(int argc, char **argv) {
-    if (argc != 2) { std::fprintf(stderr, "usage: %s output.u32.bin\n", argv[0]); return 2; }
+    if (argc != 3) { std::fprintf(stderr, "usage: %s output.u32.bin pinned.secretkey.seal\n", argv[0]); return 2; }
     FILE *f = std::fopen(argv[1], "rb");
     if (!f) { std::perror(argv[1]); return 2; }
     std::vector<uint32_t> memory((size_t)IMAGE_LINES * 64);
@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
     int extra = std::fgetc(f), error = std::ferror(f); std::fclose(f);
     if (n != memory.size() || extra != EOF || error) { std::fprintf(stderr, "invalid DDR image size\n"); return 2; }
 #ifdef VERIFY_PSI
-    int rc = psi_verify_intersection(memory.data());
+    int rc = psi_verify_intersection(memory.data(), argv[2]);
 #else
-    int rc = pir_verify_record(memory.data());
+    int rc = pir_verify_record(memory.data(), argv[2]);
 #endif
     std::printf("offline semantic verification: %s\n", rc ? "FAIL" : "PASS");
     return rc ? 1 : 0;

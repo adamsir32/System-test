@@ -320,6 +320,21 @@ def validate_operation_levels(spec, parameters, operations):
 
 
 def import_package(source, destination, spec, commit, verify_existing=False):
+    # Validate byte provenance, not merely the claimed producer revision string.
+    entries = read_rows(source / "provenance/files.csv")
+    names = set()
+    for entry in entries:
+        require(entry['path'] not in names, 'duplicate provenance file')
+        names.add(entry['path'])
+        data = safe_file(source, entry['path']).read_bytes()
+        digest = 14695981039346656037
+        for byte in data:
+            digest = ((digest ^ byte) * 1099511628211) & ((1 << 64) - 1)
+        require(len(data) == int(entry['bytes']) and digest == int(entry['fnv1a64'], 16),
+                'provenance content mismatch: ' + entry['path'])
+    require(names == {p.relative_to(source).as_posix() for p in source.rglob('*')
+                      if p.is_file() and p != source / 'provenance/files.csv'},
+            'provenance must cover the complete package')
     package = read_json(source / "package.json")
     scheme = "ckks" if spec.get("kind") == "instruction" or spec.get("profile") == "primitive" else spec["scheme"]
     degree = int(spec["degree"])

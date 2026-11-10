@@ -9,15 +9,15 @@ extern "C" {
 #include "layout.h"
 }
 #include "psi_fixture.h"
+#include "test_key.hpp"
 static size_t reverse13(size_t x) { size_t r=0; for(unsigned i=0;i<13;++i){ r=(r<<1)|(x&1); x>>=1; } return r; }
-extern "C" int psi_verify_intersection(const volatile uint32_t *memory) {
+extern "C" int psi_verify_intersection(const volatile uint32_t *memory, const char *key_path) {
  try {
   constexpr size_t n=8192; seal::EncryptionParameters p(seal::scheme_type::bfv); p.set_poly_modulus_degree(n);
-  p.set_coeff_modulus(seal::CoeffModulus::Create(n,{31,31,31,31,31})); p.set_plain_modulus(65537);
-  seal::prng_seed_type seed{}; std::array<uint64_t,8> words{UINT64_C(0x41505349434f4e43),1,2,3,4,5,6,7}; std::copy(words.begin(),words.end(),seed.begin());
-  p.set_random_generator(std::make_shared<seal::Blake2xbPRNGFactory>(seed));
+  p.set_coeff_modulus({seal::Modulus(2146713601),seal::Modulus(2146959361),seal::Modulus(2147074049),seal::Modulus(2147205121),seal::Modulus(2147352577)}); p.set_plain_modulus(65537);
   seal::SEALContext context(p,true,seal::sec_level_type::none); if(!context.parameters_set()) return 1;
-  seal::KeyGenerator keygen(context); seal::Decryptor decryptor(context,keygen.secret_key()); seal::BatchEncoder encoder(context);
+  auto key = load_test_key(context,key_path,true);
+  seal::Decryptor decryptor(context,key); seal::BatchEncoder encoder(context);
   auto level=context.first_context_data(); while(level && level->parms().coeff_modulus().size()!=1) level=level->next_context_data();
   if(!level || OUTPUT_COUNT!=8) return 1;
   std::vector<std::vector<uint64_t>> decoded(4);
@@ -25,8 +25,9 @@ extern "C" int psi_verify_intersection(const volatile uint32_t *memory) {
    seal::Ciphertext c; c.resize(context,level->parms_id(),2); c.is_ntt_form()=false; c.scale()=1.0; c.correction_factor()=1;
    for(unsigned k=0;k<2;++k) { const auto &span=outputs[bundle*2+k];
     if(span.words!=n || span.component>=2 || span.modulus_id!=0 || span.modulus!=level->parms().coeff_modulus()[0].value()) return 1;
-    for(size_t i=0;i<n;++i) c.data(span.component)[reverse13(i)]=memory[(size_t)span.line*64+i];
+    for(size_t i=0;i<n;++i) { auto v=memory[(size_t)span.line*64+i]; if(v>=span.modulus) return 1; c.data(span.component)[reverse13(i)]=v; }
    }
+   if(decryptor.invariant_noise_budget(c)<=0) return 1;
    seal::Plaintext plain; decryptor.decrypt(c,plain); encoder.decode(plain,decoded[bundle]);
   }
   std::vector<uint64_t> actual, expected;

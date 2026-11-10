@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "build_id": "cd87850b0ea2013e2ffd0fb19aa7720157602c4a9aaca641c80254ccb6d202c2",
+  "hardware_verified": false,
+  "files": {
+    "st08_01_psi_small": "bcd50ac979d906b4fe388744e3decd8c3481264c1e15983efbab2c866d7deb5c",
+    "st08_02_pir_small": "bc772ff13b2fc5dc61267838e5b4b4894a2b64bc5a76fedf99f045298a1a0448",
+    "group_08": "7921b3f547e5f21d334e3f0f8491e77a7955cef1a9e7aedc2051936e27d9ea66",
+    "build/identity.json": "aaaae7a86e1b34300cee47d800a309b9217e79243d4df533ef3a79e21c2b5ead",
+    "build/imported/psi/image.u32.bin": "fcf1619fd6cf526725fab7dff18a21364509407833f2f00690b14d90ebbba1af",
+    "build/imported/psi/golden.u32.bin": "4b84898657a0e88f71f834f05ae3eb63480a01013fa7fbe530bc727eb383d0c6",
+    "build/imported/psi/writable.u8.bin": "8a8a35537147e241cc685c33ed7a8553d94717ebea57a83ddf67b69ea223d2d6",
+    "build/imported/stage0/image.u32.bin": "a78794e7fb71aca6069c23c73d340f38071baa762acb94658e4203c336339e3e",
+    "build/imported/stage0/golden.u32.bin": "5453dd274430fe01a89d990037529d4f91f7e5d8836af402f89054032104f021",
+    "build/imported/stage0/writable.u8.bin": "ecbefae2f8ec1ab2015445c21b8cd9643c5e586e038c775322a686daa3376d89",
+    "build/imported/stage1/image.u32.bin": "602cc6a63d1f958e51001feb526ad2029b814adeaf71c1b26d49d45032d07102",
+    "build/imported/stage1/golden.u32.bin": "1353a5980a3bbfe06078da3162bb2c10b982987b5371426eb72aaa7fbae4b342",
+    "build/imported/stage1/writable.u8.bin": "c3f96c6850f93481e2407f2ea7b6bda25441a094c7d89597e50c9e72792af577",
+    "build/imported/stage1/cpu-inputs.u8.bin": "42b6b042a6909ae092025e7b8d241faaa434fd353e903f0944c0809198c28438"
+  },
+  "instruction_counts": {
+    "st08_01_psi_small/psi": 2891,
+    "st08_02_pir_small/stage0": 17740,
+    "st08_02_pir_small/stage1": 26700,
+    "group_08/psi": 2891,
+    "group_08/stage0": 17740,
+    "group_08/stage1": 26700
+  },
+  "checked_objects": {
+    "build/objects/app_support.o": "7342ceca9243d54349e94cdcaffb78aa810da3397476cc2eec7567867aac6b2c",
+    "build/objects/st_common.o": "606b0712ac865c2457c9f9e4c2d7d92cdbf8be0294eb9973671ba4b87a87260e",
+    "build/objects/st_dual.o": "2b4f6fb1a6cfa0fdd4bbaca85e1af1da4ddd4c2f0e922860430c526906b2249d",
+    "build/objects/psi_layout.o": "b743494db0fa04e3d62ecacc085d0650baa2bb98bb6be1fcec46d59f44bead0a",
+    "build/objects/psi_fixed.o": "78d9b680ef635e0215c3393d6fdea079d1db06cba79f82e6350f97bdfe3393c8",
+    "build/objects/pir_cpu_decompose.o": "86cd437c98ad80a2c541430c84861a06f7b2a5d2ce6804e9175e3757f23131e8",
+    "build/objects/pir_cpu_encode.o": "e78e2d33da8d0cd3aac6539c33708930a09ed69569cf675bcd6d62ad326c857e",
+    "build/objects/pir_layout.o": "ba831a063da56def06782c0597b5a127c037760c7968a7e5e9fc5b03d452bbad",
+    "build/objects/stage0_fixed.o": "73d42b0e05e558fc033dfd0801c6a104802034268ec96e71794bca6bf9d24521",
+    "build/objects/stage1_fixed.o": "5219fab98a32da80a77cb268f7b97f31f6008b4522081c87cff5db6c72536e26",
+    "build/objects/st08_01_psi_small.o": "ac1a4d6d948c2471a7de7164cd4ad20382b48483c01c61081b0370a031f779f7",
+    "build/objects/st08_01_psi_small_main.o": "1867f20b38893569954f0b3a7fe59e1616910328dfbe7bf9016e8468da389308",
+    "build/objects/st08_02_pir_small.o": "92f5718df65c62cc76b2263f510407efe27bc5f94b85fe2d8266abd1147629a4",
+    "build/objects/st08_02_pir_small_main.o": "b79bfe4ff9acb4479171726b3bda25dda29744f231d1e8951a7284ef975b72a4",
+    "build/objects/group_08.o": "69a5051441901e0b676e619f2d5dbf7e23ad22c9e0d80ebd36ba6c92aae738e7"
+  },
+  "no_v": "PASS",
+  "inputs_lock_sha256": "445ff849fd8cba6c915a0397809e59cccb19aaa1b785edadf95da7220b9ab9e1"
+}
