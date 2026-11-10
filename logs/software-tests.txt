@@ -1,24 +1,17 @@
-test_01_full_software_flow (test_acceptance.AcceptanceTests.test_01_full_software_flow) ... ok
-test_02_protected_regions_and_failure_snapshots (test_acceptance.AcceptanceTests.test_02_protected_regions_and_failure_snapshots) ... ok
-test_03_cpu_inputs_protected_and_scratch_allowed (test_acceptance.AcceptanceTests.test_03_cpu_inputs_protected_and_scratch_allowed) ... ok
-test_04_timeout_preserves_incomplete_image (test_acceptance.AcceptanceTests.test_04_timeout_preserves_incomplete_image) ... ok
-test_05_stale_and_incomplete_runs_rejected (test_acceptance.AcceptanceTests.test_05_stale_and_incomplete_runs_rejected) ... ok
-test_06_wrong_key_corruption_and_size_rejected (test_acceptance.AcceptanceTests.test_06_wrong_key_corruption_and_size_rejected) ... ok
-test_07_unconfirmed_routing_rejected (test_acceptance.AcceptanceTests.test_07_unconfirmed_routing_rejected) ... ok
-test_08_fixture_lock (test_acceptance.AcceptanceTests.test_08_fixture_lock) ... ok
-test_09_cpu_write_boundary_and_snapshot (test_acceptance.AcceptanceTests.test_09_cpu_write_boundary_and_snapshot) ... ok
-test_10_package_content_corruption_rejected (test_acceptance.AcceptanceTests.test_10_package_content_corruption_rejected) ... ok
-test_11_failed_collection_cannot_pass (test_acceptance.AcceptanceTests.test_11_failed_collection_cannot_pass) ... ok
-test_12_route_alias_and_evidence_changes_rejected (test_acceptance.AcceptanceTests.test_12_route_alias_and_evidence_changes_rejected) ... ok
+python3 -m unittest discover -s tests -v
+test_01_full_flow (test_small.SmallST.test_01_full_flow) ... ok
+test_02_readonly_guard_outputs (test_small.SmallST.test_02_readonly_guard_outputs) ... ok
+test_03_scratch_and_cpu_input_permissions (test_small.SmallST.test_03_scratch_and_cpu_input_permissions) ... ok
+test_04_poll_and_terminal_states (test_small.SmallST.test_04_poll_and_terminal_states) ... ok
+test_05_slow_pir_handoff (test_small.SmallST.test_05_slow_pir_handoff) ... ok
+test_06_peer_failure_and_case_timeout (test_small.SmallST.test_06_peer_failure_and_case_timeout) ... ok
+test_07_old_output_rejected (test_small.SmallST.test_07_old_output_rejected) ... ok
+test_08_invalid_image_or_key (test_small.SmallST.test_08_invalid_image_or_key) ... ok
+test_09_failed_ssh_still_collects (test_small.SmallST.test_09_failed_ssh_still_collects) ... ok
+test_10_skip_and_missing_results (test_small.SmallST.test_10_skip_and_missing_results) ... ok
+test_11_elf_instruction_streams (test_small.SmallST.test_11_elf_instruction_streams) ... ok
 
 ----------------------------------------------------------------------
-Ran 12 tests in 3.439s
+Ran 11 tests in 13.864s
 
 OK
-/home/zhaozhengyi/independent-pir-psi-audit-20261026/st-hardening-20261110/System-test/build/software-r6tekz3i/transport-test/runs/20261110T115546Z-340ba9875c98
-{
-  "status": "FAIL",
-  "hardware_verified": false,
-  "run_id": "20261110T115546Z-340ba9875c98",
-  "error": "remote execution/collection failed; see transport.log"
-}

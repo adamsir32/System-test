@@ -1,102 +1,154 @@
-# PIR / PSI Small Linux ST 扩展
+# PIR / PSI Small System-test 扩展
 
-本公开仓库只交付自己的 PIR/PSI Small 测试、Producer 应用包和适配工具。原 System-test 是私有依赖：接收方使用自己有权限取得的 Runtime，本仓库不包含其源码、ZIP 或其他测试用例。
+本扩展只测试我们自己的 Producer 应用：PSI Small，以及 PIR Small 的 Stage0 → CPU 分解/编码 → Stage1。
+基于原始 `System-test-main.zip` 的 Linux ST 组织方式，使用原 Runtime 的双 Lane、MMIO、缓存维护和 PASS/FAIL/SKIP。
+原 System-test 为私有依赖，接收方自行取得授权源码；本仓库不发布其源码、ZIP 或其他 ST/IT 用例。
 
-当前状态：**软件验证及交叉构建已具备验收流程；实体 HPU、RTL 执行和实际 hart→HPU 路由尚未验证。** `SOFTWARE_FLOW_PASS` 不能作为硬件 PASS。
+**本次完成交叉构建和软件实验，尚未执行真实 HPU。软件 Mock 的结果不能作为板卡 PASS。**
 
-## 版本及固定用例
+## 目录与复用关系
 
-- Producer：`adamsir32/inline-asm@5a0f7898da265a6c92e6f73331a540c8fc8d38a9`。
-- 应用包保留原始构建提交 `2622761537c7dcd73a89da3482da1d65c2b9c9b5`，不改写其历史来源。在原构建服务器直接比较确认，两版本代码、依赖及 CMake 输入相同，差异为交付文档。目录 tree ID 和文件 SHA-256 在 `packages/inputs.lock.json`。
-- PIR CPU 分解／编码复用 `adamsir32/nexus-am@61baacec`；与服务器原提交 `c738b84e` 的完整 Git tree 相同。Nexus-AM 不是本工程的测试目标。
-- 外部 Runtime 的接口版本由 `config/runtime-contract.json` 中的文本摘要约束；摘要统一 LF，不公开私有源码。不同版本须先审查兼容性，不能直接跳过检查。
+| 文件/目录 | 职责与复用来源 |
+| --- | --- |
+| `Makefile` | 原 ZIP 的独立用例 + `group_XX`、RV64GC、静态链接方式；只构建 08 组两个用例 |
+| `src/st08_01_psi_small.c` | 参照 `st03_01_padd_l4_n1024.c` 的 prepare/配置/屏障/执行/比较流程 |
+| `src/st08_02_pir_small.c` | 参照 `st02_04_psync_rearm_mmio.c` 连续阶段与多代屏障；复用已有 PIR CPU 交接代码 |
+| `src/st_group_08.c` | 原 `st_group_*.c` 的逐用例隔离、双 Lane 汇总和 PASS/FAIL/SKIP |
+| `src/app_support.*` | 应用文件装载、CPU 输入边界、现场保存；内存比较直接调用原 `st_v2_*` |
+| `src/pir_cpu*` | 已有 Nexus-AM PIR 分解/编码实现，不重新实现算法 |
+| `src/*client.cpp`, `offline_verify.cpp`, `test_key.hpp` | 已有 PSI/PIR SEAL 客户端语义恢复，仅在开发机运行 |
+| `packages/` | 既有 Producer 应用包、CPU fixture、公开固定测试私钥 |
+| `scripts/import_packages.py` | 导入三阶段应用包，生成编译所需布局和文件 |
+| `tools/import_package.py`, `pir_unified_layout.py` | 复用已有导入和 PIR 布局逻辑，去掉其他测试类别及交付哈希检查 |
+| `tools/prepare_runtime.py` | 仅在 `build/runtime/` 生成应用参数适配后的原 Runtime |
+| `scripts/deploy_run.sh` | 原 ZIP 的 SSH/SCP 方式，加必要数据文件、超时、失败现场下载 |
+| `scripts/verify_results.py` | 检查本次板卡退出/阶段完成情况，并解密实际下载的输出 |
+| `tests/` | 仅用于这两个 ST 的宿主故障实验；不编入板卡 ELF |
 
-| 参数 | PSI Small | PIR Small |
-| --- | --- | --- |
-| BFV N / 明文模数 | 8192 / 65537 | 4096 / 2056193 |
-| 密钥模数链 | 2146713601, 2146959361, 2147074049, 2147205121, 2147352577 | 2147205121, 2147295233, 2147352577, 2147377153 |
-| 用例 | Sender 1–10；Receiver 1、101–104；交集 {1} | 128×1024 字节；4×4 布局；目标记录 8 |
-| HPU 指令数 | 2891 | Stage0 17740；Stage1 26700 |
-| 导入镜像字节（含 guard） | 5910784 | Stage0 7875840；Stage1 11676928 |
-| 输出 limb 数 | 8 | Stage0 16；Stage1 32 |
+原 ZIP 的 04–07 应用用例实际是未接入 Producer 的桩，没有可直接运行的 PIR/PSI 或应用包导入器。
+因此保留现有 Producer 导入和客户端算法；没有重建通用 Runtime 或额外验收框架。
+不使用 SHA256SUMS、文件哈希清单、Receipt、Runtime Contract、Git 提交强制校验或路由证明 JSON。
+Producer 包原有元数据随包保留，但不把来源哈希作为部署前置条件。
 
-这些是公开的固定测试数据，安全级别为 0，不是生产安全参数。PIR CPU 得到 32 个明文多项式，再编码并覆盖 96 个 Stage1 动态 limb；其余 6 个固定 plaintext limb、密钥和 twiddle 均保持不变。没有重新实现 PIR/PSI 算法或新增 HPU 算子。
+## 获取与接入
 
-## 构建
-
-开发环境：Linux、Python 3（tarfile 支持 `filter`）、宿主 C/C++17 编译器、CMake >=3.22、Git、RISC-V Linux 交叉编译器、SSH/SCP。
-
-```sh
-make SYSTEM_TEST=/path/to/authorized/System-test \
-  CROSS_COMPILE=riscv64-linux-gnu-
-make offline
-make test SYSTEM_TEST=/path/to/authorized/System-test
-```
-
-第一条命令生成两个独立 ELF 和 `group_08`，检查所有 15 个项目目标文件无 V 指令，并比较 ELF 固定入口和包内 HPU 指令流。外部 Runtime 的 `st_common.o`、`st_dual.o` 也在检查范围内；不把静态系统库的指令归为项目源码检查。
-
-`build/board-receipt.json` 记录源码、Runtime、编译选项、ELF 和部署输入摘要。部署前会拒绝已变化的源码或构件。可执行文件必须和同次构建的镜像、Golden、权限位图一起部署。
-
-`make offline` 首次从公开 Producer 仓库取得固定版本，仅构建宿主 modified-SEAL；禁用 GSL、ZLIB、ZSTD、HEXL 等可选依赖，不需要为板卡编译 SEAL。后续可离线复用。也可复用已有本机构建：
+从 `feature/pir-psi-small-st-refactor` 工作分支取得扩展，在独立目录构建。原 Runtime 放在另一目录，使用 `SYSTEM_TEST` 指定其根目录：
 
 ```sh
-make offline SEAL_SOURCE=/path/to/modified-SEAL SEAL_BUILD=/path/to/host-seal-build
+export SYSTEM_TEST=/path/to/authorized/System-test-main
+export CROSS_COMPILE=riscv64-unknown-linux-gnu-
+make
+make check-no-v
 ```
 
-源码摘要仍须与固定 Producer 对应；已有构建若启用了可选依赖，可传入 `SEAL_CPPFLAGS`、`SEAL_LIBS`。不要将 RISC-V SEAL 库传给宿主链接器。
+需要 Linux、Make、Python 3（tarfile 支持 `filter`）、RISC-V Linux GCC/objdump。
+构建参数沿用 `-O2 -g -Wall -Wextra -march=rv64gc`、`-static`。
+也可 `make st08_01_psi_small`、`make st08_02_pir_small` 或 `make group_08`。
+原 Runtime 应包含 `src/st_common.c/.h`、`src/st_dual.c`、`src/st_insn.h`、`src/st_ntt_vectors.h` 和 `scripts/check_no_riscv_v.sh`。
+其已生成的指令/NTT 头文件直接复用，应用指令使用 Producer 包内的固定发令入口，不重新编码。
 
-## 密钥与离线语义验证
+原 Runtime 的 512 行窗口不足以容纳应用，构建适配仅做三件事：
 
-`packages/keys/` 中是**有意公开的固定测试私钥**，只对应本仓库固定 fixture。它们在原 Producer 环境导出，交付前通过所有包输出的实际解密和最终语义比较验证。接收方不再调用 KeyGenerator，不依赖标准库随机分布重现密钥。
+1. 将 `ST_WINDOW_LINES` 扩展到三个应用镜像所需的最大值（当前 45613 行，含 guard）。原 `st_dual_child` 每 Lane 一次映射 CSR 和 DDR；PIR 两阶段复用它。
+2. `st_wait_irq` 保持 IRQ/VALID/BUSY/FAULT 条件，改为单调时钟期限，默认 `ST_HPU_TIMEOUT_MS=120000`。
+3. 原多代屏障不再固定 5 秒，而是复用 `ST_DUAL_TIMEOUT_MS` 的用例预算；父进程仍执行整个用例的总超时，默认 300000 ms。
 
-导入／部署前检查密钥文件 SHA-256；验证器加载 SEAL SecretKey 后再次检查参数和密钥数据的 BLAKE2b-256 指纹。私钥只留在开发机，不上传板卡。`tools/export_test_keys.cpp` 仅用于维护者迁移 fixture，不能在接收方运行时重建或替换密钥。
+原 Runtime 文件不原地修改；适配副本只在被忽略的 `build/runtime/`，不公开私有实现。
+外部 Runtime 接口结构变化时需人工适配，工具会指出无法匹配的接口；没有版本/哈希门禁。
+切换 Runtime、工具链或编译选项时先 `make clean` 再构建。
 
-独立检查示例（仅表示语义检查，不是 HPU 运行证明）：
+## 开发机离线解密与软件实验
+
+准备宿主 GCC/G++、CMake >=3.22 和 Producer 使用的 modified-SEAL 源码。例如已有 inline-asm 仓库：
 
 ```sh
-./build/verify_psi output/RUN/results/psi-lane0.u32.bin packages/keys/psi.secretkey.seal
-./build/verify_pir output/RUN/results/pir-stage1-lane0.u32.bin packages/keys/pir.secretkey.seal
+make offline SEAL_SOURCE=/path/to/inline-asm/third_party/modified-SEAL
+make test
 ```
 
-PSI 恢复四个密文并检查每个元素的 8 个 felt，与 CPU 集合交集比较。PIR 恢复 Stage1 密文，解密、重组、再次解密并逐字节核对目标记录。两者拒绝不规范系数、错误密钥、零噪声预算和不完整镜像。
+`SEAL_SOURCE` 默认取原 Runtime 的 inline-asm 子模块下同名目录；不存在时明确指定已有 Producer 源码。
+本次实验使用 `inline-asm` 的 `feature/pir-psi-audit-fixes` 中 modified-SEAL 4.4。
+不在接收方重新运行 Producer，也不要求板卡构建或安装 SEAL。
+`make offline` 在 `build/seal/` 构建宿主库，禁用 GSL/ZLIB/ZSTD/HEXL，并生成 `build/verify_psi` 和 `build/verify_pir`。
 
-## 双 lane 的硬件前置条件
+`packages/keys/` 是有意公开的固定测试私钥，来自原 Producer 环境，已经对包内输出完成语义解密验证。
+接收方直接加载密钥，检查 SEAL 参数与格式，并通过最终语义比较确认结果；不从种子重新生成密钥，不做文件哈希绑定。
+固定种子不能保证不同标准库重建同一密钥；这些密钥只能用于此固定 fixture。
+PIR 数据库字节生成使用 `0x5345414c50495232`；PSI Producer 固定 PRNG 种子首字为 `0x41505349434f4e43`，均不属于生产安全配置。
 
-目前没有板卡或接线证据，不能推断实际 hart→HPU 路由已正确。`config/routing.example.json` 明确标记 `unconfirmed`，直接部署会拒绝。
+`make test` 编译测试专用 Mock，复用原 Runtime 的实际内存检查、完成状态检查、fork 和屏障代码。
+Mock 只写入 Golden，不执行 HPU 算术；日志明确打印 `[SOFTWARE MOCK]`，正式结果复核会拒绝该日志。
+设置 `SEAL_SOURCE` 环境变量时还会编译 PIR 客户端 ASan/UBSan 检查程序。
+测试依赖先完成板卡构建和 `make offline`；`check-no-v` 使用原 Runtime 检查器检查全部 15 个项目目标文件。
 
-接收方需要根据**实际板卡/bitstream 的 RTL、板卡说明或测量记录**提供路由文件，填写 Linux CPU ID、设备树 hart ID、对应 HPU、CSR/DDR 地址、板卡标识及证据文件 SHA-256。仅将示例中的 status 改成 confirmed 不构成路由核实；证据必须说明该对应关系。不要假设 Linux CPU 编号等于 hart 编号。
+## 板卡部署与验收
 
-运行时每个 lane 绑定到指定单个 CPU，并核对 `/sys/devices/system/cpu/cpuN/of_node/reg` 的大端 hart ID。缺少节点、绑定失败、hart 不符均失败。此检查确认调度位置，CPU→HPU 接线仍以所提供的硬件证据为依据。
+沿用原 System-test 的板卡条件：RISC-V Linux、root、可用的 `/dev/mem`、HPU 自定义指令、用户态缓存维护和独立保留的 DDR。
+地址不变：lane0 CSR `0x08000000`、DDR `0x87000000`；lane1 CSR `0x08001000`、DDR `0x8b000000`。
+每 Lane 需要至少 45613×256 字节的可用保留 DDR，两个基址间隔 64 MiB。
 
-其他板卡条件沿用原 Runtime：root、允许对应 `/dev/mem` 区域、自定义 HPU 指令、用户态缓存维护指令、独立保留的 DDR 区域、支持多代发令屏障。每个 lane 使用独立基址，DDR 间隔 64 MiB。
+每 Lane 默认绑定 Linux CPU 0/1。板卡 CPU 编号不同可设置 `ST_CPU0`、`ST_CPU1` 两个环境变量。
+**Linux CPU 编号不等于 hart ID；两个进程或两个 MMIO 地址也不能证明 CPU→HPU 路由。**
+接收方需要根据已有板卡接线/bitstream 确认实际路由；无须填写本扩展专用的硬件 JSON 或证据清单。
 
-## 一次完整验收
+开发机需已能以 SSH 密钥登录板卡。板卡需提供 `sh`、`tar`、`timeout`、`chmod` 等基础命令，开发机需 SSH/SCP、`timeout`。
+从扩展仓库根目录运行：
 
 ```sh
-TARGET_HOST=BOARD_IP TARGET_USER=root ROUTING_FILE=/path/to/confirmed-routing.json \
-  BINARY=group_08 sh scripts/deploy_run.sh
+TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08 sh scripts/deploy_run.sh
+# 单用例
+TARGET_HOST=BOARD_IP BINARY=st08_01_psi_small sh scripts/deploy_run.sh
+TARGET_HOST=BOARD_IP BINARY=st08_02_pir_small sh scripts/deploy_run.sh
 ```
 
-脚本完成：本地构件校验 → 建立唯一 run 目录 → 上传并校验 ELF/镜像/Golden/位图 → 双 lane 执行 → 无论用例成功或失败均尝试下载现场 → 核对运行身份及完整性 → 两 lane 的 PSI/PIR 解密 → 汇总 `acceptance.json`。私钥不包含在上传包中。
+默认 `TARGET_PORT=22`、`TARGET_DIR=/root/pir-psi-st`。脚本创建新的运行目录，上传 ELF 和镜像/Golden/位图，双 Lane 执行后下载结果并离线解密。
+超时、非零返回码或断连时仍尝试下载已经产生的现场；上传失败时不发令。
+SSH 有连接/保活超时，传输限时 180 秒，默认板卡整次运行限时 `RUN_TIMEOUT=900` 秒，SSH 执行限时比它多 60 秒。
+大幅调高单用例预算时也需相应调高 `RUN_TIMEOUT`，否则外层期限先到会失败。
+私钥不上传板卡。
 
-`output/<UTC时间-随机ID>/` 保存构建身份、路由证据、传输日志、板卡返回码、逐阶段 DDR/JSON 和语义日志。不会复用旧输出；板卡文件使用 O_EXCL 创建。只有本次构件一致、板卡返回 0、两个 lane 所有阶段完整、Golden/只读区/guard 和语义检查均通过，才给出 `HPU_ACCEPTANCE_PASS`。
-
-单用例也可设置 `BINARY=st08_01_psi_small` 或 `st08_02_pir_small`。离线复核整次已收集运行：
+原工程习惯的手工运行也可使用：将 ELF 及 `build/imported/*/*.bin` 按原相对目录复制到板卡，在该目录执行：
 
 ```sh
-python3 scripts/verify_run.py output/RUN
+mkdir -p output
+out=$(mktemp -d output/manual-XXXXXXXX)
+ST_OUTPUT_DIR="$out" ./group_08 >"$out/board.log" 2>&1
+rc=$?
+printf '%s\n' "$rc" >"$out/board.exit"
+cat "$out/board.log"
 ```
 
-## 内存保护及失败现场
+把 `$out` 下载到开发机，再执行 `python3 scripts/verify_results.py /path/to/results`；单用例加 `--binary st08_01_psi_small` 或 `--binary st08_02_pir_small`。
+自动脚本的本地结果在 `output/run-XXXXXXXX/`，包括 `transport.log`、`results/board.log`、`results/board.exit`、DDR 和各 Lane 语义日志。
+正常完整运行应有 PSI、PIR Stage0、PIR Stage1 的两 Lane 共 6 份 DDR；PSI 和 Stage1 共 4 次离线解密检查。
 
-HPU 可写位图来自实际 DSTORE 子区间，包含合法 scratch 和输出；其余输入、密钥、twiddle、空洞和 64 行尾部 guard 必须不变。输出另外逐字比较 Golden，并在初始镜像中用非规范值毒化，防止未执行误通过。
+板卡结果沿用 `[RESULT] hart0_rc=... hart1_rc=... hart1_done=1`、`[PASS] both_harts_checked=1` 和组 SUMMARY。
+组级 `skip` 仍保留，SKIP 不代表应用通过。正式验收需要两用例、两 Lane 全部成功且无 SKIP，并通过离线语义比较。
+只有真实板卡日志/退出码、完整阶段现场和最终语义都成功，脚本才输出 `[ACCEPT][PASS]`。
+它不是密码学运行证明；真实板卡和实际路由由执行者确认。
 
-PIR CPU 编码前后只允许 96 个声明输入发生变化，固定区域（包括 scratch/output 的初始值）不得被 CPU 误写。发令前保存 CPU 实际输入快照；Stage1 完成后这些输入对 HPU 也是只读的。
+PSI 固定数据为 Sender 1–10、Receiver 1/101–104，预期交集 `{1}`。
+PIR 固定数据为 128 条、每条 1024 字节、4×4 布局，目标记录索引 8，必须逐字节恢复正确。
 
-PSI、PIR Stage0、PIR Stage1 在 Golden 失败时也会保存现场。可返回的超时/fault 会保存 `completed=false` 的诊断镜像，不能作为成功证据。SIGKILL、进程崩溃或设备永久卡死可能来不及导出；收集器会将缺失现场判为失败，已有现场仍保留。诊断镜像不是设备冻结快照。
+## 历史问题复核与限制
 
-## 软件证据与尚未完成项
+| 问题 | 7291527 状态及本次处理 |
+| --- | --- |
+| 重复 mmap | 仍存在：原双 Lane 已映射 512 行，应用每阶段又映射；现改为原 Runtime 一次足量映射，应用所有返回路径释放 CSR/DDR |
+| HPU 执行终态 | 原来已经有 `wait_irq → completion_clear → check_status`；保留原实现并实验 BUSY/FAULT/VALID 异常，不重复修正 |
+| 只读区与 Guard | 原来已有；现改用原 `st_v2_*`，允许真实 DSTORE 的 Scratch/输出，输入/密钥/twiddle/guard 不可被 HPU 改写 |
+| CPU 动态输入 | 仅允许 96 个 limb，由已有 CPU 编码器生成；与 fixture 比较，更新原 shadow 后作为 HPU 只读输入；其余 6 个固定 plaintext limb 不变 |
+| PIR 阶段屏障 | 原 Runtime 固定 5 秒可能误报慢 Lane；改用已有单用例总预算，保留多代同步和失败传播 |
+| HPU 轮询超时 | 原来仅有 20000000 次循环；改用单调时钟毫秒期限，终态条件不变 |
+| PIR 密文缓冲区 | 现有 `2*2*4096` 的清零长度已正确；保留，并用 ASan/UBSan 验证客户端；不重写算法 |
+| 随机种子 | 明确区分数据库确定性生成与私钥；使用已序列化测试密钥，避免跨标准库重建 |
+| 失败现场 | 原来已有 Golden 失败导出；继续保留，包括 Stage0；文件以 O_EXCL 创建，拒绝覆盖旧结果；每次部署使用新目录 |
+| SSH 失败/超时 | 增加连接、保活、传输、执行期限，执行失败仍收集现场，任何失败不算验收成功 |
+| 离线输出衔接 | 简化为板卡日志/退出码 + 下载 DDR + 已有客户端语义比较，删除多层 Receipt/哈希绑定 |
 
-`make test` 使用测试专用 Mock HPU 写入已知输出，运行真实 ST 控制流、CPU 算法及原双 lane Runtime；它不执行硬件算术。该路径只允许输出 `SOFTWARE_FLOW_PASS`、`hardware_verified=false`。包括只读区/guard/输出/CPU 输入损坏、scratch 合法写、超时、旧运行、缺失 lane、错误密钥和传输失败等检查。
+HPU 发令本身卡死、SIGKILL、进程崩溃或设备永久挂起时，可能来不及保存当前阶段；已保存的 Stage0 等现场仍收集，缺失结果判失败。
+超时现场可能在 HPU 尚未停止时读取，仅用于诊断，不能当作稳定成功快照。
+运行失败后应按原板卡规程恢复设备再重试；本扩展没有实现通用设备复位。
 
-最新软件构建与验证记录见 `logs/software-checks.txt`。实体 HPU 执行、实际路由、缓存一致性、IRQ/PSYNC 重入和故障后的设备恢复仍待接收方在板卡验收；没有将历史软件 PASS 升格为真实 HPU PASS。
+仍待真实 HPU 验证：实际 hart 路由、完整 PSI/PIR 指令执行、PIR 两阶段数据交接、缓存一致性、IRQ/PSYNC 重入、超时/故障恢复及重复运行。
+软件实验记录见 `logs/software-checks.txt`，不得把它解释为 RTL 或真实硬件 PASS。

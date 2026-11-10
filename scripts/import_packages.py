@@ -10,15 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from import_package import import_package
 from pir_unified_layout import generate
-from verify_inputs import verify
-REV = '2622761537c7dcd73a89da3482da1d65c2b9c9b5'
 SPECS = {
     'psi': ('08_01_psi_single', 'psi_single', 'bfv_apsi_concentrated_application', 8192, 4, 'hpu_query'),
     'stage0': ('08_02_pir_stage0', 'pir_stage0', 'bfv_sealpir_2d_small_stage0_concentrated_000', 4096, 3, 'stage0_concentrated_000'),
     'stage1': ('08_03_pir_stage1', 'pir_stage1', 'bfv_sealpir_2d_small_stage1_concentrated_000', 4096, 3, 'stage1_concentrated_000'),
 }
 def main():
-    verify()
     build = ROOT / 'build'
     build.mkdir(exist_ok=True)
     meta, packages = {}, {}
@@ -35,7 +32,7 @@ def main():
         target = build / 'imported' / name
         if target.exists(): shutil.rmtree(target)
         target.parent.mkdir(parents=True, exist_ok=True)
-        meta[name] = import_package(package, target, spec, REV)
+        meta[name] = import_package(package, target, spec)
         packages[name] = package
         source = (target / (stem + '.c')).read_text()
         marker = 'int hpu_run_' + stem + '(void) {'
@@ -73,5 +70,6 @@ def main():
     fixture += 'static const uint64_t psi_receiver[] = {' + ','.join(str(x)+'ULL' for x,_ in locations) + '};\n'
     fixture += 'static const unsigned psi_location[] = {' + ','.join(str(loc)+'U' for _,loc in locations) + '};\n'
     (build / 'imported/psi/psi_fixture.h').write_text(fixture)
+    (build / 'app_lines.txt').write_text(str(max(m['IMAGE_LINES'] for m in meta.values()))+'\n')
     print('Imported PSI, PIR Stage0 and Stage1; program words and DMA layouts checked')
 if __name__ == '__main__': main()

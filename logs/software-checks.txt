@@ -1,47 +1,54 @@
-PIR / PSI Small software validation - 2026-11-10
-Scope: this public extension only. Physical HPU: NOT RUN.
-Actual Linux CPU / hart -> HPU routing: NOT VERIFIED (no board or routing evidence available).
+PIR/PSI Small ST refactor - 2026-11-10
+Base: feature/pir-psi-small-st-hardening, 7291527.
+All project edits, compilation and experiments ran on the SSH development server.
+The local machine only relayed Git objects because server GitHub TLS failed.
+Physical HPU: NOT RUN. Actual CPU/hart routing: NOT VERIFIED.
 
-Environment
-  Development host: x86_64 Linux, GCC/G++ 11.4.0.
-  Board cross compiler: riscv64-unknown-linux-gnu-gcc 14.2.0.
-  External private Runtime: uploaded reference ZIP, matched config/runtime-contract.json.
-  Private Runtime source and ZIP are not included in this repository.
+Reference review
+  Original ZIP README, Makefile, scripts, tools, st_common and st_dual inspected.
+  Original case inventory: 115; application cases in groups 04-07 are Producer stubs.
+  Templates: st03_01_padd, st02_04_psync_rearm, st01_02_window_commit,
+  st02_01_window_bounds, st02_09_cpu_hpu_config_mix and group runners.
+  No unrelated ST/IT implementation, build or board acceptance was added.
 
-Commands (paths stand for the authorized local installations)
-  make SYSTEM_TEST=/path/to/authorized/System-test CROSS_COMPILE=/path/to/riscv64-unknown-linux-gnu-
-  make offline SEAL_SOURCE=/path/to/verified-producer/third_party/modified-SEAL
-  SYSTEM_TEST=/path/to/authorized/System-test python3 -m unittest discover -s tests -v
+Reused implementation
+  Runtime maps, cache maintenance, window CSR configuration and completion checks.
+  Runtime st_v2_prepare/copy/allow_output/check_words/check_memory, including guards.
+  Runtime fork, multi-generation barrier, abort propagation, total timeout and result aggregation.
+  Existing PIR decomposition/encoding and PSI/PIR offline client algorithms.
+  Existing Producer package import, narrowed to these three application stages.
 
-Results
-  Package SHA-256 lock, original package provenance and DMA/layout import: PASS.
-  Three RISC-V ELF targets: PASS.
-  Original Runtime no-V checker on all 15 project objects: PASS (logs/no-v.txt).
-  Exact ELF HPU instruction stream comparison, six entry checks: PASS.
-    st08_01_psi_small/psi: 2891
-    st08_02_pir_small/stage0: 17740
-    st08_02_pir_small/stage1: 26700
-    group_08/psi: 2891
-    group_08/stage0: 17740
-    group_08/stage1: 26700
-  Fresh independent host SEAL build, GSL/ZLIB/ZSTD/HEXL disabled: PASS.
-  Serialized test keys verified against packaged outputs in original and fresh host SEAL builds: PASS.
-  Host mock flow: six stage/lane DDR snapshots and four offline semantic checks: PASS.
-  Twelve regression tests, including negative/failure cases: PASS (3.439 seconds).
-  The FAIL JSON at the end of software-tests.txt is the expected simulated transport failure in test_11.
-  Default acceptance rejects host_mock results; explicit software mode reports hardware_verified=false.
+Changes
+  Plain Makefile builds two standalone STs and group_08 using original Runtime.
+  Runtime build-local adaptation: larger initial mapping, elapsed IRQ timeout,
+  barrier uses existing case budget. Private source remains external and unchanged.
+  No repeated stage mmap; explicit DDR/CSR release on returning case paths.
+  Removed file hashes, receipts, contracts, fixed Git checks and routing-evidence configuration.
+  Removed unrelated importer branches and unused compressed-image outputs.
+  SSH/SCP deployment has bounded operations and collects after execution failure.
+  Board log/exit code and stage dumps feed the existing host semantic verifiers.
 
-Build ID
-  cd87850b0ea2013e2ffd0fb19aa7720157602c4a9aaca641c80254ccb6d202c2
-
-Evidence
-  logs/board-build-receipt.json: ELF/input hashes, 15 object hashes, six instruction counts.
-  logs/offline-build-receipt.json: host verifier, key/source/configuration hashes.
-  logs/software-tests.txt: complete regression test output.
-  logs/software-flow.json: SOFTWARE_FLOW_PASS, hardware_verified=false.
+Validation
+  Clean cross build of 3 static RV64GC ELF files: PASS (GCC 14.2.0, -O2).
+  Original no-V checker on all 15 project objects: PASS.
+  Six final ELF instruction comparisons: PASS; PSI 2891, Stage0 17740, Stage1 26700.
+  Refactored import vs previous tested outputs: all images, Golden, masks and fixed code identical.
+  PIR CPU source, application archives and serialized test keys unchanged.
+  Fresh host modified-SEAL build (GCC/G++ 11.4.0; optional dependencies off): PASS.
+  Eleven host regression methods: PASS, 13.864 seconds, no skipped tests.
+  Six stage/lane captures; four final semantic checks (PSI intersection and PIR record): PASS.
+  PIR client ASan/UBSan: PASS (instrumented client, uninstrumented SEAL dependency).
+  Six-second lane skew at PIR handoff: PASS; total case timeout still terminates lanes.
+  IRQ timeout/BUSY/fault and terminal BUSY/invalid/fault: correctly FAIL and preserve diagnostics.
+  Readonly/guard/output and CPU input corruption: correctly FAIL.
+  Legitimate scratch writes: PASS. CPU writes into fixed region: correctly FAIL.
+  Mapping counters: one CSR + one DDR map and two unmaps per lane/case.
+  Duplicate results rejected; bad image/key rejected; SKIP does not become application acceptance.
+  Simulated SSH timeout still attempts collection and reports failure.
+  Python compilation, shell syntax and git diff whitespace checks: PASS.
 
 Limits
-  The mock writes Golden values; it does not execute HPU arithmetic.
-  No original unrelated ST or IT cases were implemented or accepted.
-  Physical HPU execution, actual hart routing, cache/IRQ/PSYNC behavior and fault recovery remain unverified.
-  Unconfirmed routing configuration blocks deployment. Recipient must supply actual hardware evidence and run board acceptance.
+  Mock writes packaged Golden values; it does not calculate HPU arithmetic.
+  No physical routing, HPU execution, cache/IRQ/PSYNC, device recovery or repeated-board-run claim.
+  SIGKILL/crash or wedged instruction issue can prevent a current-stage dump.
+  Timeout captures are diagnostic and may race a still-running device.

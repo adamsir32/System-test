@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import struct
 
-from import_package import GUARD_LINES, read_json, read_rows, require, store_or_verify
+from import_package import GUARD_LINES, read_json, read_rows, require
 
 N = 4096
 LINE_WORDS = 64
@@ -36,31 +36,6 @@ def emit_table(name, type_name, rows):
     return (f"const struct {type_name} {name}[{len(rows)}] = {{\n" +
             "".join("    { " + ", ".join(f"{value}U" for value in row) + " },\n"
                     for row in rows) + "};\n")
-
-
-def compress_zero_lines(image):
-    """Lossless line stream: PZL1, line count, then zero or literal runs."""
-    require(len(image) % 256 == 0, "PIR image is not line aligned")
-    lines = len(image) // 256
-    result = bytearray(b"PZL1" + struct.pack("<I", lines))
-    cursor = 0
-    while cursor < lines:
-        zero = not any(image[cursor * 256:(cursor + 1) * 256])
-        end = cursor + 1
-        while end < lines and (not any(image[end * 256:(end + 1) * 256])) == zero:
-            end += 1
-        count = end - cursor
-        result.extend(struct.pack("<I", count | (0x80000000 if zero else 0)))
-        if not zero:
-            result.extend(image[cursor * 256:end * 256])
-        cursor = end
-    return bytes(result)
-
-
-def write_generated(path, data, verify_existing):
-    require(verify_existing or not path.exists(),
-            f"refusing to overwrite generated layout: {path}")
-    store_or_verify(path, data, path.exists())
 
 
 def reverse_12(value):
@@ -122,7 +97,7 @@ def read_dynamic_input_map(path, plaintext_rows, physical_image, moduli):
 
 
 def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
-             cpu_parameters, dynamic_input_map, verify_existing=False):
+             cpu_parameters, dynamic_input_map):
     _, _, golden0, parameters0 = package_info(stage0_package)
     manifest1, rows1, golden1, parameters1 = package_info(stage1_package)
     params = read_json(cpu_parameters)
@@ -135,13 +110,6 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
             all(pow(psi, N, q) == q - 1 and pow(psi, 2 * N, q) == 1
                 for psi, q in zip(params["stage1_psi"], mod1)),
             "CPU parameters disagree with either package")
-    compressed_sizes = {}
-    for stage, package in (("stage0", stage0_package), ("stage1", stage1_package)):
-        original_image = (destination / stage / "image.u32.bin").read_bytes()
-        compressed = compress_zero_lines(original_image)
-        write_generated(destination / stage / "image.pzl.bin", compressed,
-                        verify_existing)
-        compressed_sizes[stage] = len(compressed)
     physical_image = (stage1_package / manifest1["image"]).read_bytes()
     for basis, (psi, modulus) in enumerate(zip(params["stage1_psi"], mod1)):
         name = f"constants/twiddle/canonical/mod{basis}/ntt/pre_twist"
@@ -189,7 +157,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
             "stage1 dynamic limb coverage changed")
     window0, window1 = metadata0["WINDOW_LINES"], metadata1["WINDOW_LINES"]
     image0, image1 = metadata0["IMAGE_LINES"], metadata1["IMAGE_LINES"]
-    require(window0 <= window1 and max(image0, image1) * 256 < 0x07000000,
+    require(window0 <= window1 and max(image0, image1) * 256 < 0x04000000,
             "combined sequential DDR window exceeds workload budget")
     writable = bytearray((destination / "stage1" / "writable.u8.bin").read_bytes())
     require(len(writable) == image1, "stage1 writable bitmap size")
@@ -201,8 +169,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
                 "dynamic span conflicts with HPU writable or another CPU input")
         dynamic_lines.update(range(line, line + words // LINE_WORDS))
         writable[line:line + words // LINE_WORDS] = b"\x01" * (words // LINE_WORDS)
-    write_generated(destination / "stage1" / "cpu_writable.u8.bin", bytes(writable),
-                    verify_existing)
+    (destination / "stage1" / "cpu_writable.u8.bin").write_bytes(writable)
 
     header = f"""#ifndef PIR_UNIFIED_LAYOUT_H
 #define PIR_UNIFIED_LAYOUT_H
@@ -216,18 +183,9 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
 #define STAGE1_WINDOW_LINES {window1}U
 #define STAGE0_IMAGE_LINES {image0}U
 #define STAGE1_IMAGE_LINES {image1}U
-#define STAGE0_COMPRESSED_BYTES {compressed_sizes["stage0"]}U
-#define STAGE1_COMPRESSED_BYTES {compressed_sizes["stage1"]}U
 #define STAGE0_OUTPUT_COUNT 16U
 #define STAGE1_OUTPUT_COUNT 32U
 struct output_span {{ unsigned line, words, golden_word, modulus, step, component, modulus_id; }};
-extern const uint8_t stage0_compressed_image[STAGE0_COMPRESSED_BYTES];
-extern const uint8_t stage1_compressed_image[STAGE1_COMPRESSED_BYTES];
-extern const uint32_t stage0_golden_words[16U * PIR_CPU_DEGREE];
-extern const uint32_t stage1_golden_words[32U * PIR_CPU_DEGREE];
-extern const uint8_t stage0_writable_lines[STAGE0_IMAGE_LINES];
-extern const uint8_t stage1_writable_lines[STAGE1_IMAGE_LINES];
-extern const uint8_t stage1_cpu_writable_lines[STAGE1_IMAGE_LINES];
 extern const struct output_span stage0_outputs[STAGE0_OUTPUT_COUNT];
 extern const struct output_span stage1_outputs[STAGE1_OUTPUT_COUNT];
 extern const struct pir_cpu_output_limb stage0_cpu_limbs[PIR_CPU_OUTPUT_LIMBS];
@@ -245,8 +203,8 @@ extern const struct pir_cpu_parameters pir_parameters;
                "    { " + ", ".join(f"{v}U" for v in mod0) + " },\n"
                "    { " + ", ".join(f"{v}U" for v in mod1) + " },\n"
                "    { " + ", ".join(f"{v}U" for v in params["stage1_psi"]) + " }\n};\n")
-    write_generated(destination / "layout.h", header.encode(), verify_existing)
-    write_generated(destination / "layout.c", source.encode(), verify_existing)
+    (destination / "layout.h").write_text(header)
+    (destination / "layout.c").write_text(source)
     return {"stage0_window_lines": window0, "stage1_window_lines": window1,
             "cpu_plaintext_words": 32 * N, "cpu_input_limbs": len(limbs1),
             "fixed_plaintext_limbs": 6, "combined_ddr_lines": max(image0, image1)}

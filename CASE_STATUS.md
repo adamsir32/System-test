@@ -1,6 +1,0 @@
-# PIR/PSI Small ST status
-
-| Case | Status | Reason |
-| --- | --- | --- |
-| 08_01_psi_small | software_ready | Physical HPU and actual hart routing NOT VERIFIED |
-| 08_02_pir_small | software_ready | Physical HPU and actual hart routing NOT VERIFIED |

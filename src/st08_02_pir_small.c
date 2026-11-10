@@ -22,7 +22,7 @@ static int check_cpu_inputs(void) {
     }
     fclose(f); return ST_OK;
 }
-int st_case_08_02_pir_small(void) {
+static int run_pir(void) {
     int rc = app_bind_lane();
     if (rc) return rc;
     rc = app_prepare("stage0", STAGE0_IMAGE_LINES, STAGE0_WINDOW_LINES);
@@ -46,6 +46,7 @@ int st_case_08_02_pir_small(void) {
     if (!rc) rc = app_check("build/imported/stage1/golden.u32.bin", stage1_outputs, STAGE1_OUTPUT_COUNT, STAGE1_IMAGE_LINES);
     return app_finish("pir-stage1", rc);
 }
+int st_case_08_02_pir_small(void) { return app_close(run_pir()); }
 #ifdef ST_STANDALONE
 ST_CASE_MAIN("08_02_pir_small", "PIR Small", st_case_08_02_pir_small)
 #endif

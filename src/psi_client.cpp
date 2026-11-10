@@ -16,7 +16,7 @@ extern "C" int psi_verify_intersection(const volatile uint32_t *memory, const ch
   constexpr size_t n=8192; seal::EncryptionParameters p(seal::scheme_type::bfv); p.set_poly_modulus_degree(n);
   p.set_coeff_modulus({seal::Modulus(2146713601),seal::Modulus(2146959361),seal::Modulus(2147074049),seal::Modulus(2147205121),seal::Modulus(2147352577)}); p.set_plain_modulus(65537);
   seal::SEALContext context(p,true,seal::sec_level_type::none); if(!context.parameters_set()) return 1;
-  auto key = load_test_key(context,key_path,true);
+  auto key = load_test_key(context,key_path);
   seal::Decryptor decryptor(context,key); seal::BatchEncoder encoder(context);
   auto level=context.first_context_data(); while(level && level->parms().coeff_modulus().size()!=1) level=level->next_context_data();
   if(!level || OUTPUT_COUNT!=8) return 1;

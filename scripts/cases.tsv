@@ -1,3 +1,0 @@
-group	case_id	function	subject	status	reason
-08	08_01_psi_small	st_case_08_01_psi_small	PSI Small	software_ready	Physical HPU and actual hart routing NOT VERIFIED
-08	08_02_pir_small	st_case_08_02_pir_small	PIR Small	software_ready	Physical HPU and actual hart routing NOT VERIFIED

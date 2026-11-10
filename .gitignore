@@ -1,8 +1,7 @@
 /build/
-/*.log
+/output/
 /st08_01_psi_small
 /st08_02_pir_small
 /group_08
-/*-output-lane*.u32.bin
+/*-lane*.u32.bin
 __pycache__/
-/output/

@@ -19,7 +19,7 @@ extern "C" int pir_verify_record(const volatile uint32_t *memory, const char *ke
   p.set_plain_modulus(2056193);
   seal::SEALContext context(p,true,seal::sec_level_type::none);
   if(!context.parameters_set()) return 1;
-  auto key = load_test_key(context,key_path,false); seal::Decryptor decryptor(context,key);
+  auto key = load_test_key(context,key_path); seal::Decryptor decryptor(context,key);
   auto level=context.first_context_data()->next_context_data();
   if(!level || level->parms().coeff_modulus().size()!=2) return 1;
   std::vector<seal::Plaintext> plains;
