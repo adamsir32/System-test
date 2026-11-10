@@ -1,0 +1,3 @@
+group	case_id	function	subject	status	reason
+08	08_01_psi_small	st_case_08_01_psi_small	PSI Small	ready	Hardware execution not yet verified
+08	08_02_pir_small	st_case_08_02_pir_small	PIR Small	ready	Hardware execution not yet verified

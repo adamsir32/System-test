@@ -1,0 +1,31 @@
+Server software checks; target: riscv64 Linux; real HPU: NOT RUN
+Cross build: PASS (GCC 14.2.0; make acceptance-build.log returned 0)
+
+System-test case inventory
+ST/IT 用例对齐检查通过: 115 条 (selfcheck=37, pending=7, producer=71)
+
+Package import
+Imported PSI, PIR Stage0 and Stage1; program words and DMA layouts checked
+
+ELF HPU instruction words
+st08_01_psi_small psi 2891 PASS
+st08_02_pir_small stage0 17740 PASS
+st08_02_pir_small stage1 26700 PASS
+group_08 psi 2891 PASS
+group_08 stage0 17740 PASS
+group_08 stage1 26700 PASS
+
+PIR client software output
+PIR_CLIENT_SOFTWARE_RC= 0
+
+PSI client software output
+PSI_CLIENT_SOFTWARE_RC= 0
+
+System-test no-V checker
+build/no-v/app_support.o: no V instructions
+build/no-v/pir_cpu_decompose.o: no V instructions
+build/no-v/pir_cpu_encode.o: no V instructions
+build/no-v/st08_01_psi_small.o: no V instructions
+build/no-v/st08_02_pir_small.o: no V instructions
+build/psi_client.o: no V instructions
+build/pir_client.o: no V instructions
