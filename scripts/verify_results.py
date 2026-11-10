@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Check a collected ST result and decrypt its real DDR outputs on the host.
+"""Check collected ST status and complete DDR snapshots.
 No receipts or file hashes. The board exit code and stage completion are required.
 """
 import argparse
 from pathlib import Path
 import re
-import subprocess
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 CASES={'group_08':['psi','pir-stage0','pir-stage1'],
@@ -26,14 +25,7 @@ def verify(directory,binary):
             if marker not in log: raise ValueError('missing successful stage: '+stage+f' lane{lane}')
             image=directory/f'{stage}-lane{lane}.u32.bin'
             if image.stat().st_size!=size: raise ValueError('incomplete DDR: '+image.name)
-            if stage=='pir-stage0': continue
-            app='psi' if stage=='psi' else 'pir'
-            proc=subprocess.run([str(ROOT/'build'/('verify_'+app)),str(image),
-                str(ROOT/'packages/keys'/(app+'.secretkey.seal'))],capture_output=True,text=True,timeout=120)
-            (directory/f'{stage}-lane{lane}.semantic.log').write_text(proc.stdout+proc.stderr)
-            if proc.returncode: raise ValueError('semantic comparison failed: '+image.name)
-            print(f'[SEMANTIC][PASS] {stage} lane={lane}')
-    print('[ACCEPT][PASS] board ST and offline semantics; actual hardware routing remains a board prerequisite')
+    print('[ACCEPT][PASS] board Golden and memory checks; actual hardware routing remains a board prerequisite')
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('results',type=Path)

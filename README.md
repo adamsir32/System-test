@@ -1,6 +1,6 @@
 # PIR / PSI Small System-test
 
-本仓库为 HPU 提供两个 Linux 用户态系统测试：**PSI Small** 和 **PIR Small**。测试基于翠湖 System-test 的运行环境，执行应用包中的 HPU 指令，检查 DDR 结果，并在开发机上离线解密验证最终结果。
+本仓库为 HPU 提供两个 Linux 用户态系统测试：**PSI Small** 和 **PIR Small**。测试基于翠湖 System-test 的运行环境，执行应用包中的 HPU 指令，检查实际 DDR 输出与固定 Golden。
 
 - 本仓库：[adamsir32/System-test](https://github.com/adamsir32/System-test/tree/feature/pir-psi-small-st-refactor)
 - 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-audit-fixes)，基线 `5a0f7898`
@@ -12,10 +12,10 @@
 
 ## 测试做什么
 
-- **PSI**：执行 HPU 程序并比较 Golden；离线解密结果，与 CPU 计算的集合交集比较。
-- **PIR**：执行 Stage0，读取 DDR 输出，由 CPU 分解密文并编码 Stage1 动态输入；复用固定 Stage1 指令执行，比较 Golden，离线解密并检查目标记录。
+- **PSI**：执行 HPU 程序并比较固定 Golden。
+- **PIR**：执行 Stage0，读取 DDR 输出，由 CPU 分解密文并编码 Stage1 动态输入；复用固定 Stage1 指令执行，比较固定 Golden。
 
-每个测试由两个 lane 各执行一次。SEAL 仅用于开发机离线验证，板卡程序不依赖 SEAL。
+每个测试由两个 lane 各执行一次。构建、部署和运行均不依赖 SEAL。
 
 ## 测试参数
 
@@ -29,7 +29,7 @@
 | 查询结果 | 预期交集 `{1}` | 查询记录索引 `8` |
 | 固定测试种子 | `[0x41505349434f4e43, 1, 2, 3, 4, 5, 6, 7]` | `[0x5345414c50495232, 1, 2, 3, 4, 5, 6, 7]`；数据库种子 `0x5345414c50495232` |
 
-以上参数用于固定测试数据；`packages/keys/` 中的测试私钥仅用于这些测试。密文需要通过 SEAL 解密才能检查明文结果。
+以上参数用于固定测试数据。Golden 比较检查密文输出；恢复明文需要解密，板卡测试不包含这一步。
 
 | 应用包 | HPU 指令数 | DDR 镜像大小（含 guard） | Golden 大小 |
 | --- | ---: | ---: | ---: |
@@ -41,7 +41,7 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
 
 ## 构建和运行
 
-1. 获取本仓库和有权限使用的原 System-test，准备 Linux、Python 3、Make、RISC-V Linux 交叉编译器、CMake 和开发机 C/C++ 编译器：
+1. 获取本仓库和有权限使用的原 System-test，准备 Linux、Python 3、Make、RISC-V Linux 交叉编译器：
 
    ```sh
    git clone -b feature/pir-psi-small-st-refactor https://github.com/adamsir32/System-test.git
@@ -50,14 +50,13 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
    export CROSS_COMPILE=riscv64-linux-gnu-
    ```
 
-2. 构建板卡测试，并准备开发机离线验证工具：
+2. 构建板卡测试：
 
    ```sh
    make
-   make offline SEAL_SOURCE=/path/to/inline-asm/third_party/modified-SEAL
    ```
 
-   `make` 生成 `st08_01_psi_small`、`st08_02_pir_small` 和 `group_08`。`make offline` 在开发机构建应用包所需的 modified-SEAL 和验证工具。
+   生成 `st08_01_psi_small`、`st08_02_pir_small` 和 `group_08`，无需 SEAL。
 
 3. 配置好 SSH 密钥，并根据板卡实际 CPU/hart 到 HPU 的连接确认路由，然后部署运行：
 
@@ -65,8 +64,22 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
    TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08 sh scripts/deploy_run.sh
    ```
 
-   `BINARY` 也可设为 `st08_01_psi_small` 或 `st08_02_pir_small`；端口可用 `TARGET_PORT` 指定。脚本上传程序和数据，运行后下载 DDR 输出，并调用开发机验证工具。结果与日志保存在 `output/run-*/`。
+   `BINARY` 也可设为 `st08_01_psi_small` 或 `st08_02_pir_small`；端口可用 `TARGET_PORT` 指定。脚本上传程序和数据，运行后下载 DDR 输出，并检查板卡退出状态、阶段结果及下载文件。结果与日志保存在 `output/run-*/`。
 
 板卡需运行 RISC-V Linux，并支持原 System-test 所需的 `/dev/mem`、HPU 指令、缓存维护及预留 DDR。默认 lane 0/1 分别绑定 Linux CPU 0/1，可通过 `ST_CPU0`、`ST_CPU1` 调整；CPU 编号与实际 hart 路由需要由板卡配置确认。
 
 
+
+## 原 Runtime 的构建适配
+
+`tools/prepare_runtime.py` 将接收方提供的原 System-test Runtime 必要源码复制到 `build/runtime/`，只修改构建副本，不修改原工程：
+
+- 将 DDR 映射窗口从 512 行扩大到应用镜像需要的最大值（当前 45613 行，每行 256 字节，含 guard），使两个 lane 都能装载应用数据。
+- 保留原 IRQ、状态和故障判断，将 HPU 等待从固定轮询次数改为单调时钟超时；默认 120000 毫秒，可设置 `ST_HPU_TIMEOUT_MS`。
+- 将双 lane 发令屏障的固定 5 秒超时改为使用单用例预算 `ST_DUAL_TIMEOUT_MS`（默认 300000 毫秒），避免 PIR 两阶段 CPU 交接较慢时误超时。
+
+原 Runtime 继续负责 MMIO、缓存、同步和结果检查；这些适配用于容纳应用并控制等待时间。
+
+## 验证状态
+
+板卡 ST 检查输出及只读区、guard；固定 Golden 与最终明文的对应关系来自开发环境中的解密参考，接收方不需要 SEAL。真实 HPU 尚未验证；软件检查不代表硬件 PASS。

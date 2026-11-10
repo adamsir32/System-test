@@ -20,8 +20,6 @@ for n in "$TARGET_PORT" "$ST_DUAL_TIMEOUT_MS" "$ST_HPU_TIMEOUT_MS" "$RUN_TIMEOUT
 done
 [ "$RUN_TIMEOUT" -gt 0 ] || exit 2
 [ -x "./$BINARY" ] || { echo 'build the ST first' >&2; exit 2; }
-case "$BINARY" in group_08|st08_01_psi_small) [ -x build/verify_psi ] || { echo 'make offline first' >&2; exit 2; };; esac
-case "$BINARY" in group_08|st08_02_pir_small) [ -x build/verify_pir ] || { echo 'make offline first' >&2; exit 2; };; esac
 mkdir -p output
 run=$(mktemp -d output/run-XXXXXXXX)
 remote="$TARGET_DIR/$(basename "$run")"

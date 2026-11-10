@@ -1,0 +1,5 @@
+Fixed Small fixtures: development checks; physical HPU NOT RUN.
+PSI: CPU set intersection of packages/psi-sets.json is {1}.
+PIR: Producer small profile specifies 128 records of 1024 bytes. The fixed client reference targets record 8. CPU fixture maps 96 dynamic limbs.
+Before removing SEAL from delivery, the existing test_01_full_flow passed using the existing CPU handoff and host SEAL verifiers for both lanes. The host mock places packaged Golden into output DDR; CPU stage0 decomposition and stage1 encoding are checked against the fixed Stage1 input image, and SEAL decrypts the PSI and PIR Golden results against the expected intersection and record. This is software evidence, not HPU execution and not an independent proof of the entire BFV algorithm.
+After removal, a clean three-ELF cross build and 10 existing software regression tests passed without SEAL. The unchanged package importer checks instruction words, DMA, layout and Golden metadata.
