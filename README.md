@@ -69,6 +69,4 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
 
 板卡需运行 RISC-V Linux，并支持原 System-test 所需的 `/dev/mem`、HPU 指令、缓存维护及预留 DDR。默认 lane 0/1 分别绑定 Linux CPU 0/1，可通过 `ST_CPU0`、`ST_CPU1` 调整；CPU 编号与实际 hart 路由需要由板卡配置确认。
 
-## 验证状态
 
-软件构建和实验记录见 [`logs/software-checks.txt`](logs/software-checks.txt)。**真实 HPU 尚未验证**；软件测试或构建通过不能代表板卡测试通过。
