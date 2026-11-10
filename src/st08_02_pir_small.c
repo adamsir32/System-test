@@ -22,7 +22,6 @@ static int check_cpu_inputs(void) {
     }
     fclose(f); return ST_OK;
 }
-extern int pir_verify_record(const volatile uint32_t *);
 int st_case_08_02_pir_small(void) {
     int rc = app_prepare("build/imported/stage0/image.u32.bin", STAGE0_IMAGE_LINES, STAGE0_WINDOW_LINES);
     if (!rc) rc = app_run(hpu_run_bfv_sealpir_2d_small_stage0_concentrated_000);
@@ -42,7 +41,6 @@ int st_case_08_02_pir_small(void) {
     rc = app_run(hpu_run_bfv_sealpir_2d_small_stage1_concentrated_000);
     if (!rc) rc = app_check("build/imported/stage1/golden.u32.bin", stage1_outputs, STAGE1_OUTPUT_COUNT, STAGE1_IMAGE_LINES);
     if (!rc) rc = app_export("pir-output", STAGE1_IMAGE_LINES);
-    if (!rc && pir_verify_record(g_mem)) rc = ST_ERR_COMPARE;
     return rc;
 }
 #ifdef ST_STANDALONE

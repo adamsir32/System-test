@@ -11,4 +11,15 @@ scp "./$BINARY" "$TARGET_USER@$TARGET_HOST:$TARGET_DIR/"
 for stage in psi stage0 stage1; do
     scp "build/imported/$stage/image.u32.bin" "build/imported/$stage/golden.u32.bin" "$TARGET_USER@$TARGET_HOST:$TARGET_DIR/build/imported/$stage/"
 done
-ssh "$TARGET_USER@$TARGET_HOST" "cd '$TARGET_DIR' && chmod +x './$BINARY' && './$BINARY'"
+ssh "$TARGET_USER@$TARGET_HOST" "cd '$TARGET_DIR' && rm -f psi-output-lane*.u32.bin pir-output-lane*.u32.bin && chmod +x './$BINARY' && './$BINARY'"
+mkdir -p output
+case "$BINARY" in
+  group_08) prefixes="psi pir" ;;
+  st08_01_psi_small) prefixes="psi" ;;
+  st08_02_pir_small) prefixes="pir" ;;
+esac
+for prefix in $prefixes; do
+  for lane in 0 1; do
+    scp "$TARGET_USER@$TARGET_HOST:$TARGET_DIR/$prefix-output-lane$lane.u32.bin" "output/"
+  done
+done
