@@ -41,32 +41,76 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
 
 ## 构建和运行
 
-1. 获取本仓库和有权限使用的原 System-test，准备 Linux、Python 3、Make、RISC-V Linux 交叉编译器：
+### 1. 环境准备
 
-   ```sh
-   git clone -b feature/pir-psi-small-st-refactor https://github.com/adamsir32/System-test.git
-   cd System-test
-   export SYSTEM_TEST=/path/to/authorized/System-test-main
-   export CROSS_COMPILE=riscv64-linux-gnu-
-   ```
+准备 Linux 构建环境及有权限使用的原 System-test Runtime，安装 Python 3、GNU Make 和 RISC-V Linux 交叉编译工具链。
 
-2. 构建板卡测试：
+```sh
+git clone -b feature/pir-psi-small-st-refactor https://github.com/adamsir32/System-test.git
+cd System-test
 
-   ```sh
-   make
-   ```
+export SYSTEM_TEST=/path/to/authorized/System-test-main
+export CROSS_COMPILE=riscv64-linux-gnu-
+```
 
-   生成 `st08_01_psi_small`、`st08_02_pir_small` 和 `group_08`。
+`SYSTEM_TEST` 指向原 System-test 工程目录。Runtime 为外部依赖，本仓库不包含其私有源码。
 
-3. 配置好 SSH 密钥，并根据板卡实际 CPU/hart 到 HPU 的连接确认路由，然后部署运行：
+### 2. 构建测试程序
 
-   ```sh
-   TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08 sh scripts/deploy_run.sh
-   ```
+```sh
+make clean
+make
+```
 
-   `BINARY` 也可设为 `st08_01_psi_small` 或 `st08_02_pir_small`；端口可用 `TARGET_PORT` 指定。脚本上传程序和数据，运行后下载 DDR 输出，并检查板卡退出状态、阶段结果及下载文件。结果与日志保存在 `output/run-*/`。
+构建完成后生成三个静态 RISC-V ELF：
 
-板卡需运行 RISC-V Linux，并支持原 System-test 所需的 `/dev/mem`、HPU 指令、缓存维护及预留 DDR。默认 lane 0/1 分别绑定 Linux CPU 0/1，可通过 `ST_CPU0`、`ST_CPU1` 调整；CPU 编号与实际 hart 路由需要由板卡配置确认。
+- `st08_01_psi_small`：PSI Small 测试。
+- `st08_02_pir_small`：PIR Small 测试。
+- `group_08`：PSI 和 PIR 联合测试。
+
+应用包导入、Runtime 适配及测试程序编译由构建过程自动完成，无需单独生成应用包。
+
+### 3. 部署并运行
+
+确保构建主机已配置 SSH 密钥认证，并能够通过 SSH/SCP 访问目标 HPU 板卡。
+
+**推荐运行完整测试：**
+
+```sh
+TARGET_HOST=BOARD_IP \
+TARGET_USER=root \
+BINARY=group_08 \
+sh scripts/deploy_run.sh
+```
+
+也可以通过 `BINARY` 单独运行：
+
+- `st08_01_psi_small`：仅测试 PSI。
+- `st08_02_pir_small`：仅测试 PIR。
+
+板卡需运行 RISC-V Linux，并支持原 System-test 所需的 `/dev/mem`、HPU 指令执行、缓存维护及预留 DDR。默认 Lane 0/1 分别绑定 Linux CPU 0/1，可通过 `ST_CPU0`、`ST_CPU1` 调整。接收方需确认 CPU/Hart 与 HPU Lane 的实际硬件路由关系。
+
+部署脚本自动完成测试程序及应用数据打包、SCP 上传、SSH 执行、运行日志和 DDR Snapshot 回收，以及主机端结果检查。可通过 `TARGET_PORT` 指定 SSH 端口。
+
+### 4. 验收标准
+
+完整运行 `group_08` 后，应同时满足：
+
+- PSI 测试双 Lane 执行成功，Golden 比较通过。
+- PIR Stage0 双 Lane 执行成功，Golden 比较通过。
+- PIR Stage1 双 Lane 执行成功，Golden 比较通过。
+- 六份 DDR Snapshot 均成功回收且大小符合预期。
+- 板卡程序退出码为 0，主机端结果验证通过。
+
+成功时应输出：
+
+```text
+[ACCEPT][PASS] board Golden and memory checks; actual hardware routing remains a board prerequisite
+```
+
+运行日志、部署记录、DDR Snapshot 和验证结果保存在 `output/run-*/` 中，可用于后续问题定位和验收记录。
+
+**注意：** 本测试验证的是当前 Small 参数下的 PSI 和 PIR 工作负载。PIR 的 Stage0、Stage1 在 HPU 上执行，中间密文分解与动态输入编码由 CPU 完成。软件 Mock 测试通过不代表真实 HPU 验收通过。
 
 
 
