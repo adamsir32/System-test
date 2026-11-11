@@ -56,7 +56,7 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
    make
    ```
 
-   生成 `st08_01_psi_small`、`st08_02_pir_small` 和 `group_08`，无需 SEAL。
+   生成 `st08_01_psi_small`、`st08_02_pir_small` 和 `group_08`。
 
 3. 配置好 SSH 密钥，并根据板卡实际 CPU/hart 到 HPU 的连接确认路由，然后部署运行：
 
