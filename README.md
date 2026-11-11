@@ -15,7 +15,7 @@
 - **PSI**：执行 HPU 程序并比较固定 Golden。
 - **PIR**：执行 Stage0，读取 DDR 输出，由 CPU 分解密文并编码 Stage1 动态输入；复用固定 Stage1 指令执行，比较固定 Golden。
 
-每个测试由两个 lane 各执行一次。构建、部署和运行均不依赖 SEAL。
+每个测试由两个 lane 各执行一次。
 
 ## 测试参数
 
