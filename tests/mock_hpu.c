@@ -96,7 +96,10 @@ int __real_pir_cpu_encode(const uint32_t *,size_t,volatile uint32_t *,uint32_t,
     const struct pir_cpu_input_limb *,size_t,const struct pir_cpu_parameters *,struct pir_cpu_encoder *);
 int __wrap_pir_cpu_encode(const uint32_t *p,size_t n,volatile uint32_t *m,uint32_t lines,
     const struct pir_cpu_input_limb *l,size_t count,const struct pir_cpu_parameters *par,struct pir_cpu_encoder *e) {
+    if (getenv("MOCK_CPU_NO_WRITE")) return 0;
     int rc=__real_pir_cpu_encode(p,n,m,lines,l,count,par,e);
+    if (getenv("MOCK_CPU_PARTIAL"))
+        m[(size_t)l[count-1].line*ST_WORDS_PER_LINE + l[count-1].words-1] = UINT32_MAX;
     if(getenv("MOCK_CPU_BAD")) m[0]^=1;
     if(getenv("MOCK_DELAY") && st_lane==1) sleep(6);
     return rc;

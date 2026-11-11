@@ -34,6 +34,15 @@ static int run_pir(void) {
                           &pir_parameters, plaintexts, PIR_CPU_PLAINTEXTS * PIR_CPU_DEGREE)) return ST_ERR_COMPARE;
     rc = app_prepare("stage1", STAGE1_IMAGE_LINES, STAGE1_WINDOW_LINES);
     if (rc) return app_finish("pir-stage1", rc);
+    /* Poison every declared CPU input so a missing or partial write cannot pass. */
+    for (unsigned i = 0; i < PIR_CPU_INPUT_LIMBS; ++i) {
+        const struct pir_cpu_input_limb *limb = &stage1_cpu_limbs[i];
+        size_t start = (size_t)limb->line * ST_WORDS_PER_LINE;
+        size_t total = (size_t)STAGE1_WINDOW_LINES * ST_WORDS_PER_LINE;
+        if (start > total || limb->words > total - start)
+            return app_finish("pir-stage1", ST_ERR_ARG);
+        for (unsigned j = 0; j < limb->words; ++j) g_mem[start + j] = UINT32_MAX;
+    }
     if (pir_cpu_encoder_init(&encoder, &pir_parameters) ||
         pir_cpu_encode(plaintexts, PIR_CPU_PLAINTEXTS * PIR_CPU_DEGREE, g_mem,
                        STAGE1_WINDOW_LINES, stage1_cpu_limbs, PIR_CPU_INPUT_LIMBS,

@@ -98,6 +98,23 @@ class SmallST(unittest.TestCase):
         self.assertIn('pass=0 fail=0 skip=2',p.stdout)
         self.assertEqual(len(list(d.glob('*.u32.bin'))),0)
         self.assertNotEqual(run(['python3','scripts/verify_results.py',d]).returncode,0)
+    def test_12_cpu_encoder_must_write_every_word(self):
+        for setting in ('MOCK_CPU_NO_WRITE', 'MOCK_CPU_PARTIAL'):
+            d,p=self.mock(**{setting:'1'})
+            self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
+            self.assertIn('CPU input limb=',p.stdout+p.stderr)
+    def test_13_dual_hart_pass_required(self):
+        d,p=self.mock(); self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        log=(d/'board.log').read_text().replace('[SOFTWARE MOCK]','[FIXTURE]')
+        (d/'board.log').write_text(log)
+        ok=run(['python3','scripts/verify_results.py',d]); self.assertEqual(ok.returncode,0,ok.stderr)
+        for case in ('08_01_psi_small','08_02_pir_small'):
+            bad=re.sub(r'^.*\[PASS\] both_harts_checked=1 case='+case+r'\s*$', '', log, flags=re.M)
+            self.assertNotEqual(bad,log)
+            (d/'board.log').write_text(bad)
+            result=run(['python3','scripts/verify_results.py',d])
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('missing dual-hart PASS: '+case,result.stderr)
     def test_11_elf_instruction_streams(self):
         import shutil
         objdump=os.environ.get('CROSS_COMPILE','riscv64-linux-gnu-')+'objdump'

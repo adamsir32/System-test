@@ -16,6 +16,13 @@ def verify(directory,binary):
     log=(directory/'board.log').read_text(errors='replace')
     if '[SOFTWARE MOCK]' in log:
         raise ValueError('software mock is not physical HPU acceptance')
+    cases = {'group_08': ('08_01_psi_small', '08_02_pir_small'),
+             'st08_01_psi_small': ('08_01_psi_small',),
+             'st08_02_pir_small': ('08_02_pir_small',)}
+    for case in cases[binary]:
+        pattern = r'^\[DUAL\]\[hart=0\] \[PASS\] both_harts_checked=1 case=' + re.escape(case) + r'\s*$'
+        if not re.search(pattern, log, re.MULTILINE):
+            raise ValueError('missing dual-hart PASS: ' + case)
     for stage in CASES[binary]:
         tag={'psi':'psi','pir-stage0':'stage0','pir-stage1':'stage1'}[stage]
         header=(ROOT/'build/imported'/tag/'layout.h').read_text()
