@@ -1,0 +1,8 @@
+Application archives: SHA256 (record only; no runtime enforcement)
+3e355165c2776995a70cd1ebc9517e6823a208806a12b9d32261d52d2e710848  packages/psi.tar.gz
+f28622796c36d1b398a4a87c1bdff0b0f5a6b49e69485d48b32742dffd309dd2  packages/stage0.tar.gz
+c1176472457430692356d7c67a3a3935ec4c6bc0082776abec27f33ec5adf06c  packages/stage1.tar.gz
+954f01915289745deace1f01858bcd254afcc390f475279fc993cd641c33634d  packages/cpu-fixture.tar.gz
+
+PSI, Stage0, Stage1 package metadata records Producer commit 2622761537c7dcd73a89da3482da1d65c2b9c9b5, clean-at-configure. CPU fixture has no independently verified build provenance.
+Public 5a0f7898 source tree was previously compared: code/dependency trees match the recorded build; only delivery documentation differs. The exact public commit object is unavailable on this server and GitHub TLS failed, so regeneration from 5a0f7898 was not performed and byte reproducibility is unverified. No application package was replaced.

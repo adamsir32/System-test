@@ -15,5 +15,5 @@ int main(void) {
         else ++fail;
     }
     printf("[HPU][SUMMARY] group=08 pass=%u fail=%u skip=%u\n",pass,fail,skip);
-    return fail ? 1 : 0;
+    return (fail || skip || pass != sizeof(cases)/sizeof(cases[0])) ? 1 : 0;
 }

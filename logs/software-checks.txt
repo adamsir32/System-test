@@ -1,54 +1,8 @@
-PIR/PSI Small ST refactor - 2026-11-10
-Base: feature/pir-psi-small-st-hardening, 7291527.
-All project edits, compilation and experiments ran on the SSH development server.
-The local machine only relayed Git objects because server GitHub TLS failed.
-Physical HPU: NOT RUN. Actual CPU/hart routing: NOT VERIFIED.
-
-Reference review
-  Original ZIP README, Makefile, scripts, tools, st_common and st_dual inspected.
-  Original case inventory: 115; application cases in groups 04-07 are Producer stubs.
-  Templates: st03_01_padd, st02_04_psync_rearm, st01_02_window_commit,
-  st02_01_window_bounds, st02_09_cpu_hpu_config_mix and group runners.
-  No unrelated ST/IT implementation, build or board acceptance was added.
-
-Reused implementation
-  Runtime maps, cache maintenance, window CSR configuration and completion checks.
-  Runtime st_v2_prepare/copy/allow_output/check_words/check_memory, including guards.
-  Runtime fork, multi-generation barrier, abort propagation, total timeout and result aggregation.
-  Existing PIR decomposition/encoding and PSI/PIR offline client algorithms.
-  Existing Producer package import, narrowed to these three application stages.
-
-Changes
-  Plain Makefile builds two standalone STs and group_08 using original Runtime.
-  Runtime build-local adaptation: larger initial mapping, elapsed IRQ timeout,
-  barrier uses existing case budget. Private source remains external and unchanged.
-  No repeated stage mmap; explicit DDR/CSR release on returning case paths.
-  Removed file hashes, receipts, contracts, fixed Git checks and routing-evidence configuration.
-  Removed unrelated importer branches and unused compressed-image outputs.
-  SSH/SCP deployment has bounded operations and collects after execution failure.
-  Board log/exit code and stage dumps feed the existing host semantic verifiers.
-
-Validation
-  Clean cross build of 3 static RV64GC ELF files: PASS (GCC 14.2.0, -O2).
-  Original no-V checker on all 15 project objects: PASS.
-  Six final ELF instruction comparisons: PASS; PSI 2891, Stage0 17740, Stage1 26700.
-  Refactored import vs previous tested outputs: all images, Golden, masks and fixed code identical.
-  PIR CPU source, application archives and serialized test keys unchanged.
-  Fresh host modified-SEAL build (GCC/G++ 11.4.0; optional dependencies off): PASS.
-  Eleven host regression methods: PASS, 13.864 seconds, no skipped tests.
-  Six stage/lane captures; four final semantic checks (PSI intersection and PIR record): PASS.
-  PIR client ASan/UBSan: PASS (instrumented client, uninstrumented SEAL dependency).
-  Six-second lane skew at PIR handoff: PASS; total case timeout still terminates lanes.
-  IRQ timeout/BUSY/fault and terminal BUSY/invalid/fault: correctly FAIL and preserve diagnostics.
-  Readonly/guard/output and CPU input corruption: correctly FAIL.
-  Legitimate scratch writes: PASS. CPU writes into fixed region: correctly FAIL.
-  Mapping counters: one CSR + one DDR map and two unmaps per lane/case.
-  Duplicate results rejected; bad image/key rejected; SKIP does not become application acceptance.
-  Simulated SSH timeout still attempts collection and reports failure.
-  Python compilation, shell syntax and git diff whitespace checks: PASS.
-
-Limits
-  Mock writes packaged Golden values; it does not calculate HPU arithmetic.
-  No physical routing, HPU execution, cache/IRQ/PSYNC, device recovery or repeated-board-run claim.
-  SIGKILL/crash or wedged instruction issue can prevent a current-stage dump.
-  Timeout captures are diagnostic and may race a still-running device.
+PIR/PSI Small ST software checks
+Scope: two Small ST cases; physical HPU NOT RUN.
+Clean make: PASS; 3 static RISC-V ELF files.
+make check-no-v: PASS; 15 project objects.
+make test: PASS; 12 software tests (see software-tests.txt).
+Group runner: dual PASS => 0; any FAIL, all SKIP, or one SKIP => 1.
+PSI and PIR instruction stream checks, CPU handoff and snapshot checks included in software tests.
+Host mock writes Golden; no HPU arithmetic, routing, IRQ or cache behavior has been physically verified.

@@ -15,10 +15,10 @@ class SmallST(unittest.TestCase):
         cls.tmp=Path(tempfile.mkdtemp(prefix='software-',dir=ROOT/'build'))
         s=(ROOT/'build/runtime/st_common.c').read_text()
         # Real Runtime memory/completion code; mock only mapping, MMIO and cache.
-        macros=s[s.index('#define CSR_BASE_LO'):s.index('/* ============================ 指令字')]
-        globals_=s[s.index('volatile uint32_t *g_csr;'):s.index('/* ============================ 内存屏障')]
+        macros=s[s.index('#define CSR_BASE_LO'):s.index('#define OP_PADD')]
+        globals_=s[s.index('volatile uint32_t *g_csr;'):s.index('void st_fence(void)')]
         memory=s[s.index('static uint32_t step_prng'):s.index('void st_dload(unsigned')]
-        completion=s[s.index('int st_wait_window'):s.index('/* ============================ NTT 单 stage 参考')]
+        completion=s[s.index('int st_wait_window'):s.index('const uint32_t *st_ntt_seed(')]
         completion=completion.replace('csr_read(', 'st_csr_read(').replace('csr_write(', 'st_csr_write(')
         host=cls.tmp/'runtime_host.c'
         host.write_text('#include "st_common.h"\n#include <string.h>\n'+macros+globals_+memory+completion)
@@ -94,7 +94,14 @@ class SmallST(unittest.TestCase):
         self.assertNotEqual(p.returncode,0);self.assertTrue(marker.exists())
         self.assertIn('execute=124 collect=1',p.stderr)
     def test_10_skip_and_missing_results(self):
-        d,p=self.mock(MOCK_SKIP='1');self.assertEqual(p.returncode,0)
+        stub=self.tmp/'group_stub.c'
+        stub.write_text('#include "st_common.h"\n#include <stdlib.h>\n#include <string.h>\nint st_case_08_01_psi_small(void){return 0;}\nint st_case_08_02_pir_small(void){return 0;}\nint st_run_case_dual(st_case_fn f,const char *id,const char *subject,int expected){(void)f;(void)subject;(void)expected; const char *v=getenv(strstr(id,"psi")?"PSI_RC":"PIR_RC"); return v?atoi(v):0;}\n')
+        binary=self.tmp/'group_stub'
+        build=run(['gcc','-Ibuild/runtime','src/st_group_08.c',stub,'-o',binary]); self.assertEqual(build.returncode,0,build.stderr)
+        for psi,pir,want in [(0,0,0),(1,0,1),(10,10,1),(0,10,1),(10,0,1)]:
+            result=run([binary],env=dict(os.environ,PSI_RC=str(psi),PIR_RC=str(pir)))
+            self.assertEqual(result.returncode,want,result.stdout)
+        d,p=self.mock(MOCK_SKIP='1');self.assertNotEqual(p.returncode,0)
         self.assertIn('pass=0 fail=0 skip=2',p.stdout)
         self.assertEqual(len(list(d.glob('*.u32.bin'))),0)
         self.assertNotEqual(run(['python3','scripts/verify_results.py',d]).returncode,0)

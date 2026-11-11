@@ -52,7 +52,7 @@ group_08: build/st_group_08.o $(ENTRIES) $(COMMON) $(PSI) $(PIR)
 check-no-v: $(OBJECTS)
 	OBJDUMP=$(CROSS_COMPILE)objdump bash '$(SYSTEM_TEST)/scripts/check_no_riscv_v.sh' $(OBJECTS)
 
-test: prepare
+test: all
 	python3 -m unittest discover -s tests -v
 clean:
 	rm -rf build
