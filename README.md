@@ -6,7 +6,7 @@
 - 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-audit-fixes)，基线 `5a0f7898`
 - PIR CPU 分解与编码代码来源：[adamsir32/nexus-am](https://github.com/adamsir32/nexus-am/tree/feature/pir-psi-audit-fixes)，基线 `61baacec`
 
-仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 应用包，使用时无需重新生成。应用包的原始构建记录为 `2622761537c7dcd73a89da3482da1d65c2b9c9b5`；该版本与上述 inline-asm 基线的代码和依赖目录一致，差异仅为交付文档。
+仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 应用包，使用时无需重新生成。
 
 原 System-test 为外部依赖，需要自行取得授权；本仓库不包含其私有源码。
 
