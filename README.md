@@ -3,7 +3,7 @@
 本仓库为 HPU 提供四个 Linux 用户态系统测试：**PSI Small / Medium** 和 **PIR Small / Medium**。测试基于翠湖 System-test 的运行环境，执行应用包中的 HPU 指令，检查实际 DDR 输出与固定 Golden。
 
 - 本仓库：[adamsir32/System-test](https://github.com/adamsir32/System-test/tree/feature/pir-psi-medium)
-- 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-medium)：Small 基线 `5a0f7898`，Medium 使用 `d7413fa`。
+- 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-medium)：Small 沿用现有交付包，Medium 使用 `d7413fa` 生成。
 - PIR CPU 分解与编码代码来源：[adamsir32/nexus-am](https://github.com/adamsir32/nexus-am/tree/feature/pir-psi-audit-fixes)，基线 `61baacec`
 
 仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 与 Medium 应用包，使用时无需重新生成。
