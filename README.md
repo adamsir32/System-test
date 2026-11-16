@@ -4,11 +4,11 @@
 
 - 本仓库：[adamsir32/System-test](https://github.com/adamsir32/System-test/tree/feature/pir-psi-medium)
 - 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-medium)：Small 沿用现有交付包，Medium 使用 `d7413fa` 生成。
-- PIR CPU 分解与编码代码来源：[adamsir32/nexus-am](https://github.com/adamsir32/nexus-am/tree/feature/pir-psi-audit-fixes)，基线 `61baacec`
+- PIR CPU 分解与编码代码来源：[adamsir32/nexus-am](https://github.com/adamsir32/nexus-am/tree/feature/pir-psi-medium)，Small 基于 `61baacec`，Medium 适配见该分支
 
 仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 与 Medium 应用包，使用时无需重新生成。
 
-原 System-test 为外部依赖，需要自行取得授权；本仓库不包含其私有源码。
+原 System-test 为外部依赖，需要自行取得授权；本仓库不包含其私有源码。接收方只需本仓库、原 Runtime、构建工具和 HPU 板卡，无需 Producer、SEAL 或 Nexus-AM。
 
 ## 测试做什么
 
@@ -76,19 +76,20 @@ make
 
 确保构建主机已配置 SSH 密钥认证，并能够通过 SSH/SCP 访问目标 HPU 板卡。
 
-**推荐运行完整测试：**
+**推荐运行 Medium 联合测试：**
 
 ```sh
-TARGET_HOST=BOARD_IP \
-TARGET_USER=root \
-BINARY=group_08 \
-sh scripts/deploy_run.sh
+TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08_medium sh scripts/deploy_run.sh
 ```
 
-也可以通过 `BINARY` 单独运行：
+也可以单独运行 Medium 测试：
 
-- `st08_01_psi_small`：仅测试 PSI。
-- `st08_02_pir_small`：仅测试 PIR。
+```sh
+TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=st08_03_psi_medium sh scripts/deploy_run.sh
+TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=st08_04_pir_medium sh scripts/deploy_run.sh
+```
+
+`group_08` 是原 Small 联合测试入口；`st08_01_psi_small` 和 `st08_02_pir_small` 是原 Small 单项入口。
 
 板卡需运行 RISC-V Linux，并支持原 System-test 所需的 `/dev/mem`、HPU 指令执行、缓存维护及预留 DDR。默认 Lane 0/1 分别绑定 Linux CPU 0/1，可通过 `ST_CPU0`、`ST_CPU1` 调整。接收方需确认 CPU/Hart 与 HPU Lane 的实际硬件路由关系。
 
@@ -96,7 +97,7 @@ sh scripts/deploy_run.sh
 
 ### 4. 验收标准
 
-完整运行 `group_08` 后，应同时满足：
+完整运行 `group_08_medium` 后，应同时满足：
 
 - PSI 测试双 Lane 执行成功，Golden 比较通过。
 - PIR Stage0 双 Lane 执行成功，Golden 比较通过。
@@ -133,11 +134,5 @@ sh scripts/deploy_run.sh
 - PSI Medium：Sender 8192、Receiver 1024、预期交集 32；N=4096，明文模数 188417。
 - PIR Medium：1024 条记录、每条 1024 字节，查询索引 1023；N=4096、二维 11×11。Stage0 输出 11 份密文，CPU 分解为 88 个明文并编码 264 个动态 limb，复用固定 Stage1 指令。
 - 执行入口：`st08_03_psi_medium`、`st08_04_pir_medium`；`group_08_medium` 运行两个 Medium 用例。原 `group_08` 仍只运行 Small。
-
-例如：
-
-```sh
-TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08_medium sh scripts/deploy_run.sh
-```
 
 Medium 目前已完成软件模型验证，尚未在真实 HPU 板卡上验证。
