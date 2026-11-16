@@ -12,7 +12,7 @@ ST_HPU_TIMEOUT_MS=${ST_HPU_TIMEOUT_MS:-120000}
 RUN_TIMEOUT=${RUN_TIMEOUT:-900}
 ST_CPU0=${ST_CPU0:-0}
 ST_CPU1=${ST_CPU1:-1}
-case "$BINARY" in group_08|st08_01_psi_small|st08_02_pir_small) ;; *) echo 'invalid BINARY' >&2; exit 2;; esac
+case "$BINARY" in group_08|st08_01_psi_small|st08_02_pir_small|group_08_medium|st08_03_psi_medium|st08_04_pir_medium) ;; *) echo 'invalid BINARY' >&2; exit 2;; esac
 case "$TARGET_DIR" in /*) ;; *) echo 'TARGET_DIR must be absolute' >&2; exit 2;; esac
 case "$TARGET_DIR" in *[!a-zA-Z0-9_./-]*|*/../*) echo 'invalid TARGET_DIR' >&2; exit 2;; esac
 for n in "$TARGET_PORT" "$ST_DUAL_TIMEOUT_MS" "$ST_HPU_TIMEOUT_MS" "$RUN_TIMEOUT" "$ST_CPU0" "$ST_CPU1"; do

@@ -8,7 +8,9 @@ import re
 import sys
 ROOT=Path(__file__).resolve().parents[1]
 CASES={'group_08':['psi','pir-stage0','pir-stage1'],
-       'st08_01_psi_small':['psi'], 'st08_02_pir_small':['pir-stage0','pir-stage1']}
+       'st08_01_psi_small':['psi'], 'st08_02_pir_small':['pir-stage0','pir-stage1'],
+       'group_08_medium':['psi-medium','pir-medium-stage0','pir-medium-stage1'],
+       'st08_03_psi_medium':['psi-medium'], 'st08_04_pir_medium':['pir-medium-stage0','pir-medium-stage1']}
 
 def verify(directory,binary):
     if (directory/'board.exit').read_text().strip()!='0':
@@ -18,13 +20,17 @@ def verify(directory,binary):
         raise ValueError('software mock is not physical HPU acceptance')
     cases = {'group_08': ('08_01_psi_small', '08_02_pir_small'),
              'st08_01_psi_small': ('08_01_psi_small',),
-             'st08_02_pir_small': ('08_02_pir_small',)}
+             'st08_02_pir_small': ('08_02_pir_small',),
+             'group_08_medium': ('08_03_psi_medium','08_04_pir_medium'),
+             'st08_03_psi_medium': ('08_03_psi_medium',),
+             'st08_04_pir_medium': ('08_04_pir_medium',)}
     for case in cases[binary]:
         pattern = r'^\[DUAL\]\[hart=0\] \[PASS\] both_harts_checked=1 case=' + re.escape(case) + r'\s*$'
         if not re.search(pattern, log, re.MULTILINE):
             raise ValueError('missing dual-hart PASS: ' + case)
     for stage in CASES[binary]:
-        tag={'psi':'psi','pir-stage0':'stage0','pir-stage1':'stage1'}[stage]
+        tag={'psi':'psi','pir-stage0':'stage0','pir-stage1':'stage1','psi-medium':'psi-medium',
+             'pir-medium-stage0':'stage0-medium','pir-medium-stage1':'stage1-medium'}[stage]
         header=(ROOT/'build/imported'/tag/'layout.h').read_text()
         size=int(re.search(r'#define IMAGE_LINES (\d+)U',header)[1])*256
         for lane in range(2):

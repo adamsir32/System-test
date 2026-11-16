@@ -1,12 +1,12 @@
-# PIR / PSI Small System-test
+# PIR / PSI Small 与 Medium System-test
 
-本仓库为 HPU 提供两个 Linux 用户态系统测试：**PSI Small** 和 **PIR Small**。测试基于翠湖 System-test 的运行环境，执行应用包中的 HPU 指令，检查实际 DDR 输出与固定 Golden。
+本仓库为 HPU 提供四个 Linux 用户态系统测试：**PSI Small / Medium** 和 **PIR Small / Medium**。测试基于翠湖 System-test 的运行环境，执行应用包中的 HPU 指令，检查实际 DDR 输出与固定 Golden。
 
-- 本仓库：[adamsir32/System-test](https://github.com/adamsir32/System-test/tree/feature/pir-psi-small-st-refactor)
-- 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-audit-fixes)，基线 `5a0f7898`
+- 本仓库：[adamsir32/System-test](https://github.com/adamsir32/System-test/tree/feature/pir-psi-medium)
+- 应用包来源：[adamsir32/inline-asm](https://github.com/adamsir32/inline-asm/tree/feature/pir-psi-medium)：Small 基线 `5a0f7898`，Medium 使用 `d7413fa`。
 - PIR CPU 分解与编码代码来源：[adamsir32/nexus-am](https://github.com/adamsir32/nexus-am/tree/feature/pir-psi-audit-fixes)，基线 `61baacec`
 
-仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 应用包，使用时无需重新生成。
+仓库已包含 PSI、PIR Stage0 和 Stage1 的 Small 与 Medium 应用包，使用时无需重新生成。
 
 原 System-test 为外部依赖，需要自行取得授权；本仓库不包含其私有源码。
 
@@ -46,7 +46,7 @@ PIR Stage0 输出经 CPU 处理后生成 **96 个动态输入 limb**，每个 40
 准备 Linux 构建环境及有权限使用的原 System-test Runtime，安装 Python 3、GNU Make 和 RISC-V Linux 交叉编译工具链。
 
 ```sh
-git clone -b feature/pir-psi-small-st-refactor https://github.com/adamsir32/System-test.git
+git clone -b feature/pir-psi-medium https://github.com/adamsir32/System-test.git
 cd System-test
 
 export SYSTEM_TEST=/path/to/authorized/System-test-main
@@ -62,11 +62,13 @@ make clean
 make
 ```
 
-构建完成后生成三个静态 RISC-V ELF：
+构建完成后生成六个静态 RISC-V ELF：
 
 - `st08_01_psi_small`：PSI Small 测试。
 - `st08_02_pir_small`：PIR Small 测试。
-- `group_08`：PSI 和 PIR 联合测试。
+- `group_08`：Small PSI 和 PIR 联合测试。
+- `st08_03_psi_medium`、`st08_04_pir_medium`：两个 Medium 单项测试。
+- `group_08_medium`：Medium PSI 和 PIR 联合测试。
 
 应用包导入、Runtime 适配及测试程序编译由构建过程自动完成，无需单独生成应用包。
 
@@ -110,7 +112,7 @@ sh scripts/deploy_run.sh
 
 运行日志、部署记录、DDR Snapshot 和验证结果保存在 `output/run-*/` 中，可用于后续问题定位和验收记录。
 
-**注意：** 本测试验证的是当前 Small 参数下的 PSI 和 PIR 工作负载。PIR 的 Stage0、Stage1 在 HPU 上执行，中间密文分解与动态输入编码由 CPU 完成。软件 Mock 测试通过不代表真实 HPU 验收通过。
+**注意：** 本测试验证的是当前 Small 和 Medium 参数下的 PSI 和 PIR 工作负载。PIR 的 Stage0、Stage1 在 HPU 上执行，中间密文分解与动态输入编码由 CPU 完成。软件 Mock 测试通过不代表真实 HPU 验收通过。
 
 
 
@@ -118,10 +120,24 @@ sh scripts/deploy_run.sh
 
 `tools/prepare_runtime.py` 将接收方提供的原 System-test Runtime 必要源码复制到 `build/runtime/`，只修改构建副本，不修改原工程：
 
-- 将 DDR 映射窗口从 512 行扩大到应用镜像需要的最大值（当前 45613 行，每行 256 字节，含 guard），使两个 lane 都能装载应用数据。
+- 将 DDR 映射窗口从 512 行扩大到应用镜像需要的最大值（当前 154057 行，每行 256 字节，含 guard），使两个 lane 都能装载应用数据。
 - 保留原 IRQ、状态和故障判断，将 HPU 等待从固定轮询次数改为单调时钟超时；默认 120000 毫秒，可设置 `ST_HPU_TIMEOUT_MS`。
 - 将双 lane 发令屏障的固定 5 秒超时改为使用单用例预算 `ST_DUAL_TIMEOUT_MS`（默认 300000 毫秒），避免 PIR 两阶段 CPU 交接较慢时误超时。
 
 原 Runtime 继续负责 MMIO、缓存、同步和结果检查；这些适配用于容纳应用并控制等待时间。
 
-部署时请运行 `scripts/deploy_run.sh`：它会同时传输 ELF 和 `build/imported/` 中的镜像、Golden 与布局位图；只复制 ELF 不能运行测试。PIR CPU 分解和编码仅适用于当前 Small 参数和应用包布局，不可直接用于其他规模。
+部署时请运行 `scripts/deploy_run.sh`：它会同时传输 ELF 和 `build/imported/` 中的镜像、Golden 与布局位图；只复制 ELF 不能运行测试。PIR CPU 分解和编码仅适用于已交付的 Small、Medium 参数和应用包布局，不可直接用于其他规模。
+
+## Medium 测试
+
+- PSI Medium：Sender 8192、Receiver 1024、预期交集 32；N=4096，明文模数 188417。
+- PIR Medium：1024 条记录、每条 1024 字节，查询索引 1023；N=4096、二维 11×11。Stage0 输出 11 份密文，CPU 分解为 88 个明文并编码 264 个动态 limb，复用固定 Stage1 指令。
+- 执行入口：`st08_03_psi_medium`、`st08_04_pir_medium`；`group_08_medium` 运行两个 Medium 用例。原 `group_08` 仍只运行 Small。
+
+例如：
+
+```sh
+TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08_medium sh scripts/deploy_run.sh
+```
+
+Medium 目前已完成软件模型验证，尚未在真实 HPU 板卡上验证。

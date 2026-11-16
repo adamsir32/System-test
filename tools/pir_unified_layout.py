@@ -61,10 +61,10 @@ def read_dynamic_input_map(path, plaintext_rows, physical_image, moduli):
     """Bind logical CPU plaintexts to package allocations from the producer map."""
     require(path.is_file() and not path.is_symlink(), "producer dynamic input map missing")
     by_id = {row["allocation_id"]: row for row in plaintext_rows}
-    require(len(by_id) == 102, "stage1 physical plaintext allocations are not unique")
+    require(len(by_id) == len(plaintext_rows), "stage1 physical plaintext allocations are not unique")
     with path.open(newline="", encoding="utf-8") as source:
         entries = list(csv.reader(source, delimiter="\t"))
-    require(len(entries) == 96, "producer dynamic input map must have 96 limbs")
+    require(entries and len(entries) % len(moduli) == 0, "invalid dynamic limb count")
     result = {}
     allocations = set()
     for fields in entries:
@@ -74,7 +74,7 @@ def read_dynamic_input_map(path, plaintext_rows, physical_image, moduli):
         require(match is not None and allocation in by_id,
                 "producer dynamic input map has an unknown binding")
         rank = int(match.group(1))
-        require(rank < 96 and rank not in result and allocation not in allocations,
+        require(rank < len(entries) and rank not in result and allocation not in allocations,
                 "producer dynamic input map repeats a binding")
         row = by_id[allocation]
         basis_match = re.search(r"/mod(\d+)$", allocation)
@@ -91,9 +91,9 @@ def read_dynamic_input_map(path, plaintext_rows, physical_image, moduli):
                 "producer dynamic input bytes differ from package image")
         result[rank] = (row, rank, rank % 3)
         allocations.add(allocation)
-    require(len(result) == 96 and len(plaintext_rows) - len(allocations) == 6,
+    require(len(result) == len(entries) and len(plaintext_rows) > len(allocations),
             "producer dynamic map does not separate 96 dynamic and 6 fixed limbs")
-    return [result[index] for index in range(96)]
+    return [result[index] for index in range(len(entries))]
 
 
 def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
@@ -122,7 +122,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
         require(list(actual) == packed_pre_twist(psi, modulus),
                 "CPU psi root differs from stage1 package pre-twist bytes")
     identities0 = list(dict.fromkeys(row["object_id"] for row in golden0))
-    require(len(identities0) == 4 and len(golden0) == 16 and len(golden1) == 32,
+    require(len(identities0) > 0 and len(golden0) == len(identities0) * 4 and len(golden1) == 32,
             "unexpected stage output shape")
     limbs0 = []
     for row in golden0:
@@ -133,7 +133,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
         limbs0.append((int(row["line_offset"]), N, reply, component, basis,
                        mod0[basis]))
     plaintext_rows = [row for row in rows1 if row["kind"] == "plaintext"]
-    require(len(plaintext_rows) == 102, "stage1 plaintext physical count changed")
+    require(len(plaintext_rows) % 3 == 0, "stage1 plaintext physical count changed")
     parsed = []
     for row in plaintext_rows:
         match = re.fullmatch(r"frontend/plains/plain_(\d+)/multiply/[^/]+/c0/mod(\d+)",
@@ -141,7 +141,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
         require(match is not None, "stage1 plaintext naming changed")
         parsed.append((row, int(match.group(1)), int(match.group(2))))
     identities = {identity for _, identity, _ in parsed}
-    require(len(identities) == 34 and
+    require(len(identities) == len(plaintext_rows) // 3 and
             all({basis for _, index, basis in parsed if index == identity} == {0, 1, 2}
                 for identity in identities), "stage1 plaintext identity/modulus shape changed")
     dynamic_bindings = read_dynamic_input_map(
@@ -150,14 +150,14 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
     for row, rank, basis in dynamic_bindings:
         require(basis < len(mod1), "stage1 dynamic modulus index changed")
         limbs1.append((int(row["line_offset"]), N,
-                       (rank // 3) // 4 + ((rank // 3) % 4) * 8,
+                       (rank // 3) // len(identities0) + ((rank // 3) % len(identities0)) * 8,
                        basis, mod1[basis]))
-    require(len(limbs1) == 96 and
-            {tuple(row[2:4]) for row in limbs1} == {(p, q) for p in range(32) for q in range(3)},
+    require(len(limbs1) == len(identities0) * 8 * 3 and
+            {tuple(row[2:4]) for row in limbs1} == {(p, q) for p in range(len(identities0) * 8) for q in range(3)},
             "stage1 dynamic limb coverage changed")
     window0, window1 = metadata0["WINDOW_LINES"], metadata1["WINDOW_LINES"]
     image0, image1 = metadata0["IMAGE_LINES"], metadata1["IMAGE_LINES"]
-    require(window0 <= window1 and max(image0, image1) * 256 < 0x04000000,
+    require(max(image0, image1) * 256 < 0x04000000,
             "combined sequential DDR window exceeds workload budget")
     writable = bytearray((destination / "stage1" / "writable.u8.bin").read_bytes())
     require(len(writable) == image1, "stage1 writable bitmap size")
@@ -183,7 +183,7 @@ def generate(destination, stage0_package, stage1_package, metadata0, metadata1,
 #define STAGE1_WINDOW_LINES {window1}U
 #define STAGE0_IMAGE_LINES {image0}U
 #define STAGE1_IMAGE_LINES {image1}U
-#define STAGE0_OUTPUT_COUNT 16U
+#define STAGE0_OUTPUT_COUNT {len(golden0)}U
 #define STAGE1_OUTPUT_COUNT 32U
 struct output_span {{ unsigned line, words, golden_word, modulus, step, component, modulus_id; }};
 extern const struct output_span stage0_outputs[STAGE0_OUTPUT_COUNT];
@@ -206,5 +206,5 @@ extern const struct pir_cpu_parameters pir_parameters;
     (destination / "layout.h").write_text(header)
     (destination / "layout.c").write_text(source)
     return {"stage0_window_lines": window0, "stage1_window_lines": window1,
-            "cpu_plaintext_words": 32 * N, "cpu_input_limbs": len(limbs1),
-            "fixed_plaintext_limbs": 6, "combined_ddr_lines": max(image0, image1)}
+            "cpu_plaintext_words": len(identities0) * 8 * N, "cpu_input_limbs": len(limbs1),
+            "fixed_plaintext_limbs": len(plaintext_rows) - len(limbs1), "combined_ddr_lines": max(image0, image1)}
