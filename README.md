@@ -102,13 +102,13 @@ make
 
 确保构建主机已配置 SSH 密钥认证，并能够通过 SSH/SCP 访问目标 HPU 板卡。
 
-**推荐运行 Medium 联合测试：**
+运行 Medium 联合测试：
 
 ```sh
 TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=group_08_medium sh scripts/deploy_run.sh
 ```
 
-也可以单独运行 Medium 测试：
+单独运行 Medium 测试：
 
 ```sh
 TARGET_HOST=BOARD_IP TARGET_USER=root BINARY=st08_03_psi_medium sh scripts/deploy_run.sh
